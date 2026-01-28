@@ -8,8 +8,7 @@ export default function DashboardPage() {
     const stats = [
         { label: 'Total Models', value: '12', icon: '📊', color: '#22C55E' },
         { label: 'Active Bots', value: '8', icon: '🤖', color: '#3B82F6' },
-        { label: 'Total Users', value: '156', icon: '👥', color: '#F59E0B' },
-        { label: 'API Calls', value: '2.4K', icon: '⚡', color: '#00C0E8' },
+        { label: 'Client Handled', value: '2.4K', icon: '⚡', color: '#00C0E8' },
     ];
 
     // Recent activity data

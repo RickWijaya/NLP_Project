@@ -4,6 +4,10 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 
+import pdficon from '@/public/pdficon.png';
+import wordicon from '@/public/wordicon.png';
+import texticon from '@/public/txticon.png';  
+
 export default function ViewModelPage({ params }) {
     const router = useRouter();
     // Sample data - in real app, fetch based on params.id
@@ -13,10 +17,17 @@ export default function ViewModelPage({ params }) {
         previewLink: 'localhost:3000/chat/kathy1',
         model: 'Local',
         documents: [
-            { name: 'FileName.pdf', size: '9000mb' },
-            { name: 'FileName.csv', size: '9000mb' },
-            { name: 'FileName.word', size: '9000mb' },
+            { name: 'FileName.pdf', size: '9000mb', type: 'pdf' },
+            { name: 'FileName.txt', size: '9000mb', type: 'txt' },
+            { name: 'FileName.word', size: '9000mb', type: 'word' },
         ]
+    };
+
+    // Function to get the file icon based on the file type
+    const getFileIcon = (fileType) => {
+        if (fileType === 'pdf') return pdficon;
+        if (fileType === 'word') return wordicon;
+        return texticon; // Default for txt or any other files
     };
 
     return (
@@ -58,7 +69,7 @@ export default function ViewModelPage({ params }) {
                             </div>
                         </div>
                         <button
-                            className="flex justify-center items-center p-4 w-10 h-10 rounded-full bg-transparent border-none cursor-pointer hover:opacity-80 transition-all duration-300"
+                            className="flex justify-center items-center p-2 w-10 h-10 min-h-0 rounded-full bg-transparent border-none cursor-pointer hover:opacity-80 transition-all duration-300"
                             style={{ color: 'var(--color-destructive)' }}
                             aria-label="Logout"
                         >
@@ -111,8 +122,8 @@ export default function ViewModelPage({ params }) {
                                 </label>
                                 <div className="box-border flex flex-col items-start p-0 gap-4 w-full rounded-xl" style={{ backgroundColor: 'var(--color-bg-card)', border: '1px solid var(--color-border-slate)' }}>
                                     <div className="flex flex-row items-center p-[0_10px] gap-4 w-full h-[31px] rounded-[20px]">
-                                        <span className="flex-1 font-medium text-[14px] leading-5 tracking-[-0.006em] text-[#E5E7EB]" style={{ fontFamily: 'var(--font-family-jakarta)' }}>
-                                            {botData.previewLink}
+                                        <span className="flex-1 font-medium text-[14px] leading-5 tracking-[-0.006em] text-[#3B82F6] hover:text-[#1D4ED8] duration-200" style={{ fontFamily: 'var(--font-family-jakarta)' }}>
+                                            <a href={botData.previewLink} target="_blank" rel="noopener noreferrer">{botData.previewLink}</a>
                                         </span>
                                     </div>
                                 </div>
@@ -148,12 +159,7 @@ export default function ViewModelPage({ params }) {
                                 {botData.documents.map((doc, index) => (
                                     <div key={index} className="box-border flex flex-col justify-center items-center p-[10px] gap-[5px] w-[95px] h-32 rounded-[10px]" style={{ backgroundColor: 'var(--color-bg-card)', border: '1px solid var(--color-border-slate)' }}>
                                         {/* File Icon */}
-                                        <svg width="74" height="74" viewBox="0 0 74 74" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                            <rect x="12" y="6" width="50" height="62" rx="4" stroke="#E5E7EB" strokeWidth="4" fill="none" />
-                                            <line x1="20" y1="20" x2="54" y2="20" stroke="#E5E7EB" strokeWidth="3" />
-                                            <line x1="20" y1="30" x2="54" y2="30" stroke="#E5E7EB" strokeWidth="3" />
-                                            <line x1="20" y1="40" x2="44" y2="40" stroke="#E5E7EB" strokeWidth="3" />
-                                        </svg>
+                                        <Image src={getFileIcon(doc.type)} alt="file icon" width={24} height={24} />
 
                                         {/* File Name */}
                                         <p className="font-medium text-[8px] leading-5 tracking-[-0.006em] text-white m-0" style={{ fontFamily: 'var(--font-family-jakarta)' }}>

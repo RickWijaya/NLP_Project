@@ -9,17 +9,36 @@ export default function AddModelPage() {
     const [botName, setBotName] = useState('');
     const [apiKey, setApiKey] = useState('');
     const [model, setModel] = useState('');
-    const [file, setFile] = useState(null);
+    const [files, setFiles] = useState([]); // Store uploaded files in an array
 
+    // Handle file change
     const handleFileChange = (e) => {
-        if (e.target.files && e.target.files[0]) {
-            setFile(e.target.files[0]);
+        const selectedFiles = e.target.files;
+        if (selectedFiles && selectedFiles.length > 0) {
+            const fileArray = Array.from(selectedFiles).map(file => ({
+                file,
+                name: file.name,
+                icon: getFileIcon(file.type),
+            }));
+            setFiles(prevFiles => [...prevFiles, ...fileArray]);
         }
+    };
+
+    // Function to determine the file icon based on the file type
+    const getFileIcon = (fileType) => {
+        if (fileType.includes('pdf')) return '/pdficon.png'; // Reference file from public folder
+        if (fileType.includes('word')) return '/wordicon.png'; // Reference file from public folder
+        return '/texticon.png'; // Default for .txt files
+    };
+
+    // Handle file removal
+    const handleRemoveFile = (index) => {
+        setFiles(files.filter((_, i) => i !== index));
     };
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        console.log({ botName, apiKey, model, file });
+        console.log({ botName, apiKey, model, files });
         // Handle form submission
     };
 
@@ -35,7 +54,7 @@ export default function AddModelPage() {
                                 <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z" fill="currentColor" />
                             </svg>
                         </button>
-                        <h1 className="font-medium text-[22px] leading-7 m-0" style={{ fontFamily: 'var(--font-family-poppins)', color: 'var(--color-text-primary)' }}>
+                        <h1 className="font-medium text-[22px] leading-7 m-0" style={{ fontFamily: 'var(--font-family-poppins)', color: 'var(--color-text-primary)' }} >
                             Manage Your Model
                         </h1>
                     </div>
@@ -62,7 +81,7 @@ export default function AddModelPage() {
                             </div>
                         </div>
                         <button
-                            className="flex justify-center items-center p-4 w-10 h-10 rounded-full bg-transparent border-none cursor-pointer hover:opacity-80 transition-all duration-300"
+                            className="flex justify-center items-center p-2 w-10 h-10 min-h-0 rounded-full bg-transparent border-none cursor-pointer hover:opacity-80 transition-all duration-300"
                             style={{ color: 'var(--color-destructive)' }}
                             aria-label="Logout"
                         >
@@ -137,14 +156,21 @@ export default function AddModelPage() {
                                     <select
                                         value={model}
                                         onChange={(e) => setModel(e.target.value)}
-                                        className="w-full h-[22px] bg-transparent border-none outline-none font-medium text-[16px] leading-[22px] tracking-[-0.007em] appearance-none cursor-pointer"
-                                        style={{ fontFamily: 'var(--font-family-jakarta)', color: model ? 'var(--color-text-primary)' : 'var(--color-text-secondary)' }}
+                                        className="w-full h-[36px] bg-transparent border-none outline-none font-medium text-[16px] leading-[22px] tracking-[-0.007em] appearance-none cursor-pointer"
+                                        style={{
+                                            fontFamily: 'var(--font-family-jakarta)',
+                                            color: model ? 'var(--color-text-primary)' : 'var(--color-text-secondary)',
+                                            backgroundColor: 'var(--color-bg-dark-primary)',
+                                            border: '1px solid var(--color-border-slate)',
+                                            borderRadius: '8px',
+                                            padding: '0px 10px',
+                                        }}
                                     >
                                         <option value="">Select model</option>
-                                        <option value="grok">Grok</option>
                                         <option value="local">Local</option>
-                                        <option value="gpt-4">GPT-4</option>
+                                        <option value="grok">Grok</option>
                                     </select>
+
                                     <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" className="absolute right-3 pointer-events-none" style={{ transform: 'rotate(-90deg)' }}>
                                         <path d="M12.5 15l-5-5 5-5" stroke="#9CA3AF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                                     </svg>
@@ -155,15 +181,15 @@ export default function AddModelPage() {
                         {/* Document Upload */}
                         <div className="flex flex-col items-end p-0 gap-2 w-full mt-4">
                             <div className="flex flex-col items-start p-0 gap-4 w-full">
-                                {/* Header with Add File Button */}
                                 <div className="flex flex-row items-center p-0 gap-4 w-full h-10">
-                                    <h3 className="flex-1 font-medium text-[14px] leading-5 tracking-[-0.006em] text-[#E5E7EB] m-0" style={{ fontFamily: 'var(--font-family-jakarta)' }}>
+                                    <h3 className="flex-1 font-medium text-[14px] leading-5 tracking-[-0.006em] text-[#E5E7EB] m-0" style={{ fontFamily: 'var(--font-family-jakarta)' }} >
                                         Document
                                     </h3>
                                     <button
                                         type="button"
                                         className="flex flex-row justify-center items-center p-[10px_16px] gap-2 w-[117px] h-10 rounded-lg border-none cursor-pointer hover:opacity-90 transition-opacity"
                                         style={{ backgroundColor: 'var(--color-button-primary)', fontFamily: 'var(--font-family-jakarta)' }}
+                                        onClick={() => document.getElementById('file-upload').click()}
                                     >
                                         <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                                             <circle cx="10" cy="10" r="9" stroke="white" strokeWidth="2" />
@@ -173,36 +199,30 @@ export default function AddModelPage() {
                                     </button>
                                 </div>
 
-                                {/* File Upload Dropzone */}
+                                {/* File List */}
                                 <div className="box-border flex flex-col items-start p-6 gap-[10px] w-full h-[162px] rounded-[32px]" style={{ backgroundColor: 'var(--color-bg-card)', border: '1px dashed var(--color-border-slate)' }}>
                                     <div className="flex flex-col items-center p-0 gap-6 w-full">
-                                        <div className="flex flex-col justify-center items-center p-0 gap-2 w-full">
-                                            <p className="font-bold text-[16px] leading-[22px] text-center tracking-[-0.007em] m-0" style={{ fontFamily: 'var(--font-family-jakarta)', color: 'var(--color-button-primary)' }}>
-                                                Browse your file to upload
-                                            </p>
-                                            <p className="font-medium text-[14px] leading-5 text-center tracking-[-0.006em] m-0" style={{ fontFamily: 'var(--font-family-jakarta)', color: 'var(--color-text-secondary)' }}>
-                                                Supported Format: PDF, Word, TXT
-                                            </p>
-                                        </div>
-                                        <label className="flex flex-row justify-center items-center p-[10px_16px] gap-2 w-[136px] h-10 rounded-lg border-none cursor-pointer hover:opacity-90 transition-opacity" style={{ backgroundColor: 'var(--color-button-primary)', fontFamily: 'var(--font-family-jakarta)' }}>
-                                            <span className="font-bold text-[14px] leading-5 tracking-[-0.006em]" style={{ color: 'var(--color-bg-card)' }}>Upload File</span>
-                                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                                <path d="M6 14l4-4 4 4M10 10v8M16 6l-6-4-6 4" stroke="#020617" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                            </svg>
-                                            <input
-                                                type="file"
-                                                accept=".pdf,.doc,.docx,.txt"
-                                                onChange={handleFileChange}
-                                                className="hidden"
-                                            />
-                                        </label>
+                                        {files.length > 0 && files.map((file, index) => (
+                                            <div key={index} className="flex flex-row items-center justify-between w-full p-2">
+                                                <div className="flex flex-row items-center gap-2">
+                                                    <div className="w-6 h-6">
+                                                        <Image src={file.icon} alt="file icon" width={24} height={24} />
+                                                    </div>
+                                                    <p className="font-medium text-[14px] leading-5 tracking-[-0.006em] text-[#E5E7EB]">{file.name}</p>
+                                                </div>
+                                                <button onClick={() => handleRemoveFile(index)} className="text-red-500">Remove</button>
+                                            </div>
+                                        ))}
                                     </div>
                                 </div>
-                                {file && (
-                                    <p className="font-medium text-[14px] leading-5 tracking-[-0.006em] text-[#E5E7EB] mt-2" style={{ fontFamily: 'var(--font-family-jakarta)' }}>
-                                        Selected: {file.name}
-                                    </p>
-                                )}
+
+                                <input
+                                    id="file-upload"
+                                    type="file"
+                                    accept=".pdf,.doc,.docx,.txt"
+                                    className="hidden"
+                                    onChange={handleFileChange}
+                                />
                             </div>
                         </div>
 
