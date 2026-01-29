@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analytics - RAG Service</title>
+    <style>
+        :root {
+            --bg: #0a0a0f;
+            --bg-card: #12121a;
+            --text: #e4e4e7;
+            --text-muted: #71717a;
+            --primary: #8b5cf6;
+            --border: #27272a;
+            --success: #22c55e;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            padding: 2rem;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.25rem;
+            text-align: center;
+        }
+
+        .stat-card h3 {
+            color: var(--text-muted);
+            font-size: 0.8rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-card .value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--primary);
+        }
+
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .card h2 {
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+        }
+
+        .chart {
+            display: flex;
+            align-items: flex-end;
+            gap: 8px;
+            height: 150px;
+            padding-top: 1rem;
+        }
+
+        .bar-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .bar {
+            width: 100%;
+            background: linear-gradient(180deg, var(--primary) 0%, #6366f1 100%);
+            border-radius: 4px 4px 0 0;
+            min-height: 4px;
+        }
+
+        .bar-label {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            margin-top: 0.5rem;
+        }
+
+        .bar-value {
+            font-size: 0.75rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .back-link {
+            color: var(--primary);
+            text-decoration: none;
+        }
+
+        .error {
+            color: #ef4444;
+            text-align: center;
+            padding: 2rem;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <h1>📊 Analytics Dashboard</h1>
+        <a href="admin.html" class="back-link">← Back to Admin</a>
+    </div>
+
+    <div id="content">
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>Total Messages</h3>
+                <div class="value" id="stat-messages">-</div>
+            </div>
+            <div class="stat-card">
+                <h3>Total Sessions</h3>
+                <div class="value" id="stat-sessions">-</div>
+            </div>
+            <div class="stat-card">
+                <h3>Total Users</h3>
+                <div class="value" id="stat-users">-</div>
+            </div>
+            <div class="stat-card">
+                <h3>Documents</h3>
+                <div class="value" id="stat-docs">-</div>
+            </div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>Messages Today</h3>
+                <div class="value" id="stat-today">-</div>
+            </div>
+            <div class="stat-card">
+                <h3>This Week</h3>
+                <div class="value" id="stat-week">-</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>📈 Messages (Last 7 Days)</h2>
+            <div class="chart" id="chart"></div>
+        </div>
+    </div>
+
+    <script>
+        const token = localStorage.getItem('admin_token');
+
+        async function loadAnalytics() {
+            if (!token) {
+                document.getElementById('content').innerHTML = '<div class="error">Please login first → <a href="admin.html">Admin Panel</a></div>';
+                return;
+            }
+
+            try {
+                const res = await fetch('/analytics/summary', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (!res.ok) throw new Error('Failed to load');
+
+                const data = await res.json();
+
+                document.getElementById('stat-messages').textContent = data.total_messages;
+                document.getElementById('stat-sessions').textContent = data.total_sessions;
+                document.getElementById('stat-users').textContent = data.total_users;
+                document.getElementById('stat-docs').textContent = data.total_documents;
+                document.getElementById('stat-today').textContent = data.messages_today;
+                document.getElementById('stat-week').textContent = data.messages_this_week;
+
+                // Render chart
+                const chart = document.getElementById('chart');
+                const max = Math.max(...data.daily_messages.map(d => d.count), 1);
+
+                chart.innerHTML = data.daily_messages.map(d => {
+                    const height = Math.max(4, (d.count / max) * 130);
+                    const day = new Date(d.date).toLocaleDateString('en', { weekday: 'short' });
+                    return `
+                        <div class="bar-container">
+                            <div class="bar-value">${d.count}</div>
+                            <div class="bar" style="height: ${height}px"></div>
+                            <div class="bar-label">${day}</div>
+                        </div>
+                    `;
+                }).join('');
+
+            } catch (err) {
+                document.getElementById('content').innerHTML = `<div class="error">Error: ${err.message}</div>`;
+            }
+        }
+
+        loadAnalytics();
+    </script>
+</body>
+
+</html>
