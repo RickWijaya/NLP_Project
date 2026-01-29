@@ -1,0 +1,27 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
+
+@import "tailwindcss";
+
+@theme {
+  --color-bg-dark-primary: #0F172A;
+  --color-bg-card: #020617;
+  --color-border-slate: #1E293B;
+  --color-button-primary: #22C55E;
+  --color-text-primary: #FFFFFF;
+  --color-text-secondary: #9CA3AF;
+  --color-cyan-glow: #00C0E8;
+  --color-destructive: #E11D48;
+
+  --font-family-poppins: 'Poppins', sans-serif;
+  --font-family-jakarta: 'Plus Jakarta Sans', sans-serif;
+
+  --shadow-cyan-glow: 0px 4px 41.4px 1px #00C0E8;
+  --shadow-sidebar: 4px 4px 12px -5px rgba(0, 0, 0, 0.25);
+  --shadow-card-cyan: 3px 4px 4px rgba(6, 182, 212, 0.25);
+}
+
+body {
+  background-color: var(--color-bg-dark-primary);
+  color: var(--color-text-primary);
+  min-height: 100vh;
+}

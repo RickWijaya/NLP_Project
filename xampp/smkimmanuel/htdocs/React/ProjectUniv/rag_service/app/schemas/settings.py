@@ -1,0 +1,67 @@
+"""
+Pydantic schemas for tenant settings.
+"""
+
+from typing import Optional, List, Dict, Any, Literal
+from pydantic import BaseModel, Field
+
+
+class TenantSettingsBase(BaseModel):
+    """Base schema for tenant settings."""
+    # Model Selection (using string with Literal for validation)
+    model_type: Literal["api", "local"] = "api"
+    api_model: str = "llama-3.3-70b-versatile"
+    local_model: str = "tinyllama"
+    
+    # Generation Parameters
+    temperature: float = Field(0.7, ge=0.0, le=2.0)
+    max_new_tokens: int = Field(512, ge=64, le=4096)
+    top_p: float = Field(0.9, ge=0.0, le=1.0)
+    top_k: int = Field(50, ge=1, le=100)
+    min_p: float = Field(0.0, ge=0.0, le=1.0)
+    repetition_penalty: float = Field(1.1, ge=1.0, le=2.0)
+    
+    # Prompt Customization
+    system_prompt: Optional[str] = None
+    no_context_prompt: Optional[str] = None
+    
+    # Retrieval Settings
+    top_k_chunks: int = Field(5, ge=1, le=20)
+    relevance_threshold: float = Field(0.1, ge=0.0, le=1.0)
+    
+    # Web Search Settings
+    allow_web_search: bool = True  # Admin toggle to allow/disallow web search
+
+
+class TenantSettingsUpdate(TenantSettingsBase):
+    """Schema for updating tenant settings."""
+    pass
+
+
+class TenantSettingsResponse(TenantSettingsBase):
+    """Schema for tenant settings response."""
+    tenant_id: str
+    
+    class Config:
+        from_attributes = True
+
+
+class AvailableModel(BaseModel):
+    """Schema for available model info."""
+    key: str
+    name: str
+    description: str
+    size_gb: Optional[float] = None
+    is_downloaded: bool = False
+
+
+class AvailableModelsResponse(BaseModel):
+    """Schema for available models response."""
+    api_models: List[AvailableModel]
+    local_models: List[AvailableModel]
+    local_llm_available: bool
+
+
+class ModelDownloadRequest(BaseModel):
+    """Schema for model download request."""
+    model_key: str
