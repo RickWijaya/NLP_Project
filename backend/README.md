@@ -103,6 +103,7 @@ uvicorn app.main:app --reload --port 8000
 
 | Document | Description |
 |----------|-------------|
+| [SETUP_GUIDE.md](./docs/SETUP_GUIDE.md) | **Start Here!** Step-by-step developer setup |
 | [API_REFERENCE.md](./docs/API_REFERENCE.md) | Complete API endpoint documentation |
 | [FRONTEND_INTEGRATION.md](./docs/FRONTEND_INTEGRATION.md) | Guide for connecting React/Vue/etc. |
 | [DEPLOYMENT.md](./docs/DEPLOYMENT.md) | Production deployment guide |
