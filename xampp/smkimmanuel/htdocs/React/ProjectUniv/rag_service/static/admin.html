@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAG Admin Dashboard</title>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --bg-dark: #0f172a;
+            --bg-card: #1e293b;
+            --text: #e2e8f0;
+            --text-muted: #94a3b8;
+            --border: #334155;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg-dark);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        h1 {
+            font-size: 2rem;
+            margin-bottom: 2rem;
+            background: linear-gradient(135deg, var(--primary), #a855f7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .card {
+            background: var(--bg-card);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            border: 1px solid var(--border);
+        }
+
+        .card h2 {
+            font-size: 1.25rem;
+            margin-bottom: 1rem;
+            color: var(--text);
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: var(--text-muted);
+            font-size: 0.875rem;
+        }
+
+        input,
+        select {
+            width: 100%;
+            padding: 0.75rem;
+            background: var(--bg-dark);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            font-size: 1rem;
+        }
+
+        input:focus,
+        select:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        button {
+            padding: 0.75rem 1.5rem;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background: var(--primary-dark);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-danger {
+            background: var(--danger);
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .tab {
+            padding: 0.75rem 1.5rem;
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+        }
+
+        .tab.active {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: white;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .status-pending {
+            background: var(--warning);
+            color: black;
+        }
+
+        .status-processing {
+            background: var(--primary);
+        }
+
+        .status-completed {
+            background: var(--success);
+        }
+
+        .status-failed {
+            background: var(--danger);
+        }
+
+        .documents-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .document-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .document-item:last-child {
+            border-bottom: none;
+        }
+
+        .document-info h3 {
+            font-size: 1rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .document-info p {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+        }
+
+        .document-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .document-actions button {
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
+        }
+
+        .chat-container {
+            display: flex;
+            flex-direction: column;
+            height: 500px;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1rem;
+            background: var(--bg-dark);
+            border-radius: 8px;
+            margin-bottom: 1rem;
+        }
+
+        .message {
+            margin-bottom: 1rem;
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            max-width: 80%;
+        }
+
+        .message.user {
+            background: var(--primary);
+            margin-left: auto;
+        }
+
+        .message.assistant {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+        }
+
+        .chat-input {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .chat-input input {
+            flex: 1;
+        }
+
+        .alert {
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+        }
+
+        .alert-success {
+            background: rgba(16, 185, 129, 0.2);
+            border: 1px solid var(--success);
+        }
+
+        .alert-error {
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid var(--danger);
+        }
+
+        .loader {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--text-muted);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <h1>🤖 RAG Admin Dashboard</h1>
+            <div style="display: flex; gap: 1rem;">
+                <a href="analytics.html" style="color: var(--primary); text-decoration: none;">📊 Analytics</a>
+                <a href="superadmin.html" style="color: var(--text-muted); text-decoration: none;">👑 Super Admin</a>
+            </div>
+        </div>
+
+        <!-- Auth Section -->
+        <div id="auth-section">
+            <div class="grid">
+                <div class="card">
+                    <h2>Login</h2>
+                    <form id="login-form">
+                        <div class="form-group">
+                            <label>Username</label>
+                            <input type="text" id="login-username" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Password</label>
+                            <input type="password" id="login-password" required>
+                        </div>
+                        <button type="submit">Login</button>
+                    </form>
+                </div>
+
+                <div class="card">
+                    <h2>Register</h2>
+                    <form id="register-form">
+                        <div class="form-group">
+                            <label>Username</label>
+                            <input type="text" id="register-username" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Email</label>
+                            <input type="email" id="register-email" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Password</label>
+                            <input type="password" id="register-password" required minlength="8">
+                        </div>
+                        <div class="form-group">
+                            <label>Tenant ID (unique identifier)</label>
+                            <input type="text" id="register-tenant" required placeholder="e.g., my_company">
+                        </div>
+                        <div class="form-group">
+                            <label>Business Name (optional)</label>
+                            <input type="text" id="register-business" placeholder="e.g., My Company Inc.">
+                        </div>
+                        <button type="submit">Register</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dashboard Section -->
+        <div id="dashboard-section" class="hidden">
+            <div class="card" style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <strong>Logged in as:</strong> <span id="current-user"></span>
+                    <br>
+                    <small>Tenant: <span id="current-tenant"></span></small>
+                </div>
+                <button onclick="logout()" class="btn-danger">Logout</button>
+            </div>
+
+            <div class="tabs">
+                <button class="tab active" onclick="showTab('documents')">📄 Documents</button>
+                <button class="tab" onclick="showTab('upload')">⬆️ Upload</button>
+                <button class="tab" onclick="showTab('chat')">💬 Chat</button>
+                <button class="tab" onclick="showTab('settings')">⚙️ Settings</button>
+                <button class="tab" onclick="showTab('stats')">📊 Stats</button>
+            </div>
+
+            <!-- Documents Tab -->
+            <div id="tab-documents" class="card">
+                <h2>Documents</h2>
+                <button onclick="loadDocuments()" style="margin-bottom: 1rem;">🔄 Refresh</button>
+                <div id="documents-list" class="documents-list">
+                    <p style="color: var(--text-muted);">Loading documents...</p>
+                </div>
+            </div>
+
+            <!-- Upload Tab -->
+            <div id="tab-upload" class="card hidden">
+                <h2>Upload Document</h2>
+                <form id="upload-form">
+                    <div class="form-group">
+                        <label>Select File (PDF, DOCX, TXT, XLSX)</label>
+                        <input type="file" id="upload-file" accept=".pdf,.docx,.txt,.xlsx" required>
+                    </div>
+                    <button type="submit">Upload</button>
+                </form>
+                <div id="upload-status" style="margin-top: 1rem;"></div>
+            </div>
+
+            <!-- Chat Tab -->
+            <div id="tab-chat" class="card hidden">
+                <h2>Test Chat</h2>
+                <div class="chat-container">
+                    <div id="chat-messages" class="chat-messages">
+                        <div class="message assistant">
+                            Hello! I'm the RAG-powered Customer Service AI. Ask me anything about your uploaded
+                            documents.
+                        </div>
+                    </div>
+                    <div class="chat-input">
+                        <input type="text" id="chat-input" placeholder="Type your question...">
+                        <button onclick="sendMessage()">Send</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Settings Tab -->
+            <div id="tab-settings" class="card hidden">
+                <h2>⚙️ AI Settings</h2>
+                <p style="color: var(--text-muted); margin-bottom: 1.5rem;">Configure how your AI assistant behaves and
+                    responds to customers.</p>
+                <form id="settings-form">
+                    <div class="grid">
+                        <div>
+                            <h3 style="margin-bottom: 1rem;">🤖 Model Configuration</h3>
+                            <div class="form-group">
+                                <label>Model Type</label>
+                                <select id="settings-model-type">
+                                    <option value="api">API (Groq)</option>
+                                    <option value="local">Local Model</option>
+                                </select>
+                                <small style="color: var(--text-muted);">API: Fast cloud-based models. Local: Run on
+                                    your machine (slower but private).</small>
+                            </div>
+                            <div class="form-group" id="api-model-group">
+                                <label>API Model</label>
+                                <select id="settings-api-model"></select>
+                                <small style="color: var(--text-muted);">Larger models are smarter but slower.
+                                    llama-3.3-70b is recommended for best quality.</small>
+                            </div>
+                            <div class="form-group hidden" id="local-model-group">
+                                <label>Local Model</label>
+                                <select id="settings-local-model"></select>
+                                <small style="color: var(--text-muted);">Local models run on CPU. TinyLlama is fastest,
+                                    Phi-2 has better reasoning.</small>
+                            </div>
+                        </div>
+                        <div>
+                            <h3 style="margin-bottom: 1rem;">🎛️ Generation Parameters</h3>
+                            <div class="form-group">
+                                <label>Temperature: <span id="temp-value">0.7</span></label>
+                                <input type="range" id="settings-temperature" min="0" max="2" step="0.1" value="0.7">
+                                <small style="color: var(--text-muted);">Controls randomness. Lower (0.1-0.3) = more
+                                    focused/factual. Higher (0.7-1.0) = more creative.</small>
+                            </div>
+                            <div class="form-group">
+                                <label>Max Tokens: <span id="tokens-value">512</span></label>
+                                <input type="range" id="settings-max-tokens" min="64" max="2048" step="64" value="512">
+                                <small style="color: var(--text-muted);">Maximum response length. 256-512 for concise
+                                    answers, 1024+ for detailed explanations.</small>
+                            </div>
+                            <div class="form-group">
+                                <label>Top P: <span id="topp-value">0.9</span></label>
+                                <input type="range" id="settings-top-p" min="0" max="1" step="0.05" value="0.9">
+                                <small style="color: var(--text-muted);">Nucleus sampling. Lower = more predictable.
+                                    Recommended: 0.9 for balanced outputs.</small>
+                            </div>
+                            <div class="form-group">
+                                <label>Top K: <span id="topk-value">50</span></label>
+                                <input type="range" id="settings-top-k" min="1" max="100" step="1" value="50">
+                                <small style="color: var(--text-muted);">Limits word choices per step. Lower = safer
+                                    responses. Higher = more diverse vocabulary.</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="margin-top: 1.5rem;">
+                        <h3 style="margin-bottom: 1rem;">🔍 Retrieval Settings</h3>
+                        <p style="color: var(--text-muted); margin-bottom: 1rem; font-size: 0.875rem;">These settings
+                            control how the AI finds relevant information from your documents.</p>
+                        <div class="grid">
+                            <div class="form-group">
+                                <label>Top K Chunks: <span id="chunks-value">5</span></label>
+                                <input type="range" id="settings-top-k-chunks" min="1" max="20" step="1" value="5">
+                                <small style="color: var(--text-muted);">Number of document sections to use as context.
+                                    More = broader knowledge, but slower and may dilute focus.</small>
+                            </div>
+                            <div class="form-group">
+                                <label>Relevance Threshold: <span id="threshold-value">0.1</span></label>
+                                <input type="range" id="settings-threshold" min="0" max="1" step="0.05" value="0.1">
+                                <small style="color: var(--text-muted);">Minimum similarity score (0-1). Higher =
+                                    stricter matching, fewer but more relevant results.</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="margin-top: 1.5rem;">
+                        <h3 style="margin-bottom: 1rem;">💬 Prompt Customization</h3>
+                        <p style="color: var(--text-muted); margin-bottom: 1rem; font-size: 0.875rem;">Customize how
+                            your AI introduces itself and handles conversations.</p>
+                        <div class="form-group">
+                            <label>System Prompt</label>
+                            <textarea id="settings-system-prompt" rows="4"
+                                style="width:100%;background:var(--bg-dark);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:0.75rem;"
+                                placeholder="Define your AI's personality, role, and guidelines. E.g., 'You are a helpful customer support agent for Acme Corp...'"></textarea>
+                            <small style="color: var(--text-muted);">The main instruction that defines your AI's
+                                behavior and tone. Include your company name and any specific rules.</small>
+                        </div>
+                        <div class="form-group">
+                            <label>No Context Prompt</label>
+                            <textarea id="settings-no-context-prompt" rows="3"
+                                style="width:100%;background:var(--bg-dark);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:0.75rem;"
+                                placeholder="What should the AI say when it can't find relevant information?"></textarea>
+                            <small style="color: var(--text-muted);">Fallback message when no relevant documents are
+                                found. Suggest alternatives or provide contact info.</small>
+                        </div>
+                    </div>
+                    <div style="margin-top: 1.5rem;">
+                        <h3 style="margin-bottom: 1rem;">🌐 Web Search Settings</h3>
+                        <p style="color: var(--text-muted); margin-bottom: 1rem; font-size: 0.875rem;">Control whether
+                            users can augment AI responses with web search results.</p>
+                        <div class="form-group">
+                            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                                <input type="checkbox" id="settings-allow-web-search" style="width: auto;" checked>
+                                Allow Web Search
+                            </label>
+                            <small style="color: var(--text-muted);">When enabled, users can toggle web search in the
+                                chat interface to supplement document-based answers with live web results.</small>
+                        </div>
+                    </div>
+                    <button type="submit" style="margin-top: 1rem;">💾 Save Settings</button>
+                </form>
+            </div>
+
+            <!-- Stats Tab -->
+            <div id="tab-stats" class="card hidden">
+                <h2>Statistics</h2>
+                <div id="stats-content">
+                    <p style="color: var(--text-muted);">Loading stats...</p>
+                </div>
+            </div>
+        </div>
+
+        <div id="alert-container"></div>
+    </div>
+
+    <script>
+        const API_BASE = '';  // Same origin
+        let authToken = localStorage.getItem('authToken');
+        let currentUser = null;
+
+        // Check if already logged in
+        if (authToken) {
+            showDashboard();
+        }
+
+        // Auth Functions
+        document.getElementById('login-form').onsubmit = async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('login-username').value;
+            const password = document.getElementById('login-password').value;
+
+            try {
+                const res = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+
+                if (!res.ok) throw new Error('Invalid credentials');
+
+                const data = await res.json();
+                authToken = data.access_token;
+                localStorage.setItem('authToken', authToken);
+
+                showAlert('Login successful!', 'success');
+                showDashboard();
+            } catch (err) {
+                showAlert(err.message, 'error');
+            }
+        };
+
+        document.getElementById('register-form').onsubmit = async (e) => {
+            e.preventDefault();
+            const data = {
+                username: document.getElementById('register-username').value,
+                email: document.getElementById('register-email').value,
+                password: document.getElementById('register-password').value,
+                tenant_id: document.getElementById('register-tenant').value,
+                business_name: document.getElementById('register-business').value || null
+            };
+
+            try {
+                const res = await fetch(`${API_BASE}/auth/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                if (!res.ok) {
+                    const err = await res.json();
+                    throw new Error(err.detail || 'Registration failed');
+                }
+
+                showAlert('Registration successful! Please login.', 'success');
+                document.getElementById('register-form').reset();
+            } catch (err) {
+                showAlert(err.message, 'error');
+            }
+        };
+
+        function logout() {
+            authToken = null;
+            localStorage.removeItem('authToken');
+            document.getElementById('auth-section').classList.remove('hidden');
+            document.getElementById('dashboard-section').classList.add('hidden');
+        }
+
+        function showDashboard() {
+            document.getElementById('auth-section').classList.add('hidden');
+            document.getElementById('dashboard-section').classList.remove('hidden');
+
+            // Decode token to get user info
+            try {
+                const payload = JSON.parse(atob(authToken.split('.')[1]));
+                currentUser = payload;
+                document.getElementById('current-user').textContent = payload.username;
+                document.getElementById('current-tenant').textContent = payload.tenant_id;
+            } catch (e) {
+                console.error('Failed to decode token');
+            }
+
+            loadDocuments();
+        }
+
+        // Tab Navigation
+        function showTab(tab) {
+            document.querySelectorAll('[id^="tab-"]').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+
+            document.getElementById(`tab-${tab}`).classList.remove('hidden');
+            event.target.classList.add('active');
+
+            if (tab === 'stats') loadStats();
+            if (tab === 'settings') loadSettings();
+        }
+
+        // API Helpers
+        async function apiCall(endpoint, options = {}) {
+            const headers = {
+                'Authorization': `Bearer ${authToken}`,
+                ...options.headers
+            };
+
+            const res = await fetch(`${API_BASE}${endpoint}`, { ...options, headers });
+
+            if (res.status === 401) {
+                logout();
+                throw new Error('Session expired');
+            }
+
+            return res;
+        }
+
+        // Documents
+        async function loadDocuments() {
+            try {
+                const res = await apiCall('/admin/documents');
+                const data = await res.json();
+
+                const container = document.getElementById('documents-list');
+
+                if (!data.documents || data.documents.length === 0) {
+                    container.innerHTML = '<p style="color: var(--text-muted);">No documents uploaded yet.</p>';
+                    return;
+                }
+
+                container.innerHTML = data.documents.map(doc => `
+                    <div class="document-item">
+                        <div class="document-info">
+                            <h3>${doc.original_filename}</h3>
+                            <p>Version ${doc.version} • ${formatBytes(doc.file_size)} • ${doc.chunk_count} chunks</p>
+                        </div>
+                        <div class="document-actions">
+                            <span class="status-badge status-${doc.status}">${doc.status}</span>
+                            <button onclick="deleteDocument('${doc.id}')" class="btn-danger">Delete</button>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (err) {
+                showAlert('Failed to load documents: ' + err.message, 'error');
+            }
+        }
+
+        async function deleteDocument(id) {
+            if (!confirm('Are you sure you want to delete this document?')) return;
+
+            try {
+                await apiCall(`/admin/documents/${id}`, { method: 'DELETE' });
+                showAlert('Document deleted', 'success');
+                loadDocuments();
+            } catch (err) {
+                showAlert('Failed to delete: ' + err.message, 'error');
+            }
+        }
+
+        // Upload
+        document.getElementById('upload-form').onsubmit = async (e) => {
+            e.preventDefault();
+            const fileInput = document.getElementById('upload-file');
+            const file = fileInput.files[0];
+
+            if (!file) return;
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const statusDiv = document.getElementById('upload-status');
+            statusDiv.innerHTML = '<div class="loader"></div> Uploading...';
+
+            try {
+                const res = await apiCall('/admin/documents', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!res.ok) {
+                    const err = await res.json();
+                    throw new Error(err.detail || 'Upload failed');
+                }
+
+                statusDiv.innerHTML = '<div class="alert alert-success">Upload successful! Document is being processed.</div>';
+                fileInput.value = '';
+                loadDocuments();
+            } catch (err) {
+                statusDiv.innerHTML = `<div class="alert alert-error">${err.message}</div>`;
+            }
+        };
+
+        // Chat
+        async function sendMessage() {
+            const input = document.getElementById('chat-input');
+            const question = input.value.trim();
+
+            if (!question) return;
+
+            const messages = document.getElementById('chat-messages');
+
+            // Add user message
+            messages.innerHTML += `<div class="message user">${escapeHtml(question)}</div>`;
+            input.value = '';
+
+            // Add loading indicator
+            messages.innerHTML += '<div class="message assistant" id="loading"><div class="loader"></div></div>';
+            messages.scrollTop = messages.scrollHeight;
+
+            try {
+                const res = await fetch(`${API_BASE}/chat/public`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        question,
+                        tenant_id: currentUser.tenant_id
+                    })
+                });
+
+                if (!res.ok) {
+                    const err = await res.json();
+                    throw new Error(err.detail || 'Chat failed');
+                }
+
+                const data = await res.json();
+
+                // Remove loading and add response
+                document.getElementById('loading').remove();
+                messages.innerHTML += `
+                    <div class="message assistant">
+                        ${data.answer.replace(/\n/g, '<br>')}
+                        <br><br>
+                        <small style="color: var(--text-muted);">
+                            ${data.retrieved_chunks.length} sources • ${data.processing_time_ms.toFixed(0)}ms
+                        </small>
+                    </div>
+                `;
+                messages.scrollTop = messages.scrollHeight;
+            } catch (err) {
+                document.getElementById('loading')?.remove();
+                messages.innerHTML += `<div class="message assistant" style="border-color: var(--danger);">Error: ${err.message}</div>`;
+            }
+        }
+
+        document.getElementById('chat-input').onkeypress = (e) => {
+            if (e.key === 'Enter') sendMessage();
+        };
+
+        // Stats
+        async function loadStats() {
+            try {
+                const res = await apiCall('/admin/stats');
+                const data = await res.json();
+
+                document.getElementById('stats-content').innerHTML = `
+                    <div class="grid">
+                        <div>
+                            <h3>Document Status</h3>
+                            <p>Pending: ${data.document_counts.pending || 0}</p>
+                            <p>Processing: ${data.document_counts.processing || 0}</p>
+                            <p>Completed: ${data.document_counts.completed || 0}</p>
+                            <p>Failed: ${data.document_counts.failed || 0}</p>
+                        </div>
+                        <div>
+                            <h3>Vector Store</h3>
+                            <p>Total Chunks: ${data.total_chunks}</p>
+                            <p>Vectors: ${data.vector_store.count || 0}</p>
+                        </div>
+                    </div>
+                `;
+            } catch (err) {
+                document.getElementById('stats-content').innerHTML = `<p>Failed to load stats: ${err.message}</p>`;
+            }
+        }
+
+        // Settings
+        let availableModels = { api_models: [], local_models: [] };
+
+        async function loadSettings() {
+            try {
+                // Load available models first
+                const modelsRes = await apiCall('/admin/available-models');
+                availableModels = await modelsRes.json();
+
+                // Populate API models dropdown
+                const apiSelect = document.getElementById('settings-api-model');
+                apiSelect.innerHTML = availableModels.api_models.map(m =>
+                    `<option value="${m.key}">${m.name} - ${m.description}</option>`
+                ).join('');
+
+                // Populate local models dropdown
+                const localSelect = document.getElementById('settings-local-model');
+                localSelect.innerHTML = availableModels.local_models.map(m =>
+                    `<option value="${m.key}">${m.name} (${m.size_gb}GB) ${m.is_downloaded ? '✓' : '⬇️'}</option>`
+                ).join('');
+
+                // Load current settings
+                const settingsRes = await apiCall('/admin/settings');
+                const settings = await settingsRes.json();
+
+                // Populate form
+                document.getElementById('settings-model-type').value = settings.model_type;
+                document.getElementById('settings-api-model').value = settings.api_model;
+                document.getElementById('settings-local-model').value = settings.local_model;
+                document.getElementById('settings-temperature').value = settings.temperature;
+                document.getElementById('settings-max-tokens').value = settings.max_new_tokens;
+                document.getElementById('settings-top-p').value = settings.top_p;
+                document.getElementById('settings-top-k').value = settings.top_k;
+                document.getElementById('settings-top-k-chunks').value = settings.top_k_chunks;
+                document.getElementById('settings-threshold').value = settings.relevance_threshold;
+                document.getElementById('settings-system-prompt').value = settings.system_prompt || '';
+                document.getElementById('settings-no-context-prompt').value = settings.no_context_prompt || '';
+                document.getElementById('settings-allow-web-search').checked = settings.allow_web_search !== false;
+
+                // Update display values
+                updateSliderDisplays();
+                toggleModelType();
+
+            } catch (err) {
+                showAlert('Failed to load settings: ' + err.message, 'error');
+            }
+        }
+
+        function updateSliderDisplays() {
+            document.getElementById('temp-value').textContent = document.getElementById('settings-temperature').value;
+            document.getElementById('tokens-value').textContent = document.getElementById('settings-max-tokens').value;
+            document.getElementById('topp-value').textContent = document.getElementById('settings-top-p').value;
+            document.getElementById('topk-value').textContent = document.getElementById('settings-top-k').value;
+            document.getElementById('chunks-value').textContent = document.getElementById('settings-top-k-chunks').value;
+            document.getElementById('threshold-value').textContent = document.getElementById('settings-threshold').value;
+        }
+
+        function toggleModelType() {
+            const modelType = document.getElementById('settings-model-type').value;
+            document.getElementById('api-model-group').classList.toggle('hidden', modelType !== 'api');
+            document.getElementById('local-model-group').classList.toggle('hidden', modelType !== 'local');
+        }
+
+        // Event listeners for sliders
+        document.querySelectorAll('#tab-settings input[type="range"]').forEach(slider => {
+            slider.addEventListener('input', updateSliderDisplays);
+        });
+
+        document.getElementById('settings-model-type').addEventListener('change', toggleModelType);
+
+        document.getElementById('settings-form').onsubmit = async (e) => {
+            e.preventDefault();
+
+            const settings = {
+                model_type: document.getElementById('settings-model-type').value,
+                api_model: document.getElementById('settings-api-model').value,
+                local_model: document.getElementById('settings-local-model').value,
+                temperature: parseFloat(document.getElementById('settings-temperature').value),
+                max_new_tokens: parseInt(document.getElementById('settings-max-tokens').value),
+                top_p: parseFloat(document.getElementById('settings-top-p').value),
+                top_k: parseInt(document.getElementById('settings-top-k').value),
+                top_k_chunks: parseInt(document.getElementById('settings-top-k-chunks').value),
+                relevance_threshold: parseFloat(document.getElementById('settings-threshold').value),
+                system_prompt: document.getElementById('settings-system-prompt').value,
+                no_context_prompt: document.getElementById('settings-no-context-prompt').value,
+                allow_web_search: document.getElementById('settings-allow-web-search').checked
+            };
+
+            try {
+                const res = await apiCall('/admin/settings', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(settings)
+                });
+
+                if (!res.ok) throw new Error('Failed to save settings');
+
+                showAlert('Settings saved successfully!', 'success');
+            } catch (err) {
+                showAlert('Failed to save settings: ' + err.message, 'error');
+            }
+        };
+
+        // Utilities
+        function showAlert(message, type) {
+            const container = document.getElementById('alert-container');
+            const id = Date.now();
+            container.innerHTML = `<div class="alert alert-${type}" id="alert-${id}">${message}</div>`;
+            setTimeout(() => document.getElementById(`alert-${id}`)?.remove(), 5000);
+        }
+
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+
+</html>
