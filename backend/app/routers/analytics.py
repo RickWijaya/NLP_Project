@@ -11,7 +11,7 @@ from sqlalchemy import select, func, and_
 from pydantic import BaseModel
 
 from app.database import get_db
-from app.models.document import Admin, AnalyticsEvent, ChatMessage, ChatSession, Document, User
+from app.models.document import Admin, ChatMessage, ChatSession, Document
 from app.auth.dependencies import get_current_admin
 
 router = APIRouter(prefix="/analytics", tags=["Analytics"])
@@ -80,10 +80,10 @@ async def get_analytics_summary(
     )
     total_sessions = session_result.scalar() or 0
     
-    # Total users
+    # Total users (count unique user_identifiers from sessions)
     user_result = await db.execute(
-        select(func.count(User.id))
-        .where(User.tenant_id == tenant_id)
+        select(func.count(func.distinct(ChatSession.user_identifier)))
+        .where(ChatSession.tenant_id == tenant_id)
     )
     total_users = user_result.scalar() or 0
     
@@ -195,10 +195,10 @@ async def get_superadmin_stats(
         )
         tenant_sessions = sess_result.scalar() or 0
         
-        # Users for tenant
+        # Users for tenant (unique user_identifiers)
         user_result = await db.execute(
-            select(func.count(User.id))
-            .where(User.tenant_id == tid)
+            select(func.count(func.distinct(ChatSession.user_identifier)))
+            .where(ChatSession.tenant_id == tid)
         )
         tenant_users = user_result.scalar() or 0
         total_users += tenant_users

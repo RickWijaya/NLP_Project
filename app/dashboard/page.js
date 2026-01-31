@@ -32,6 +32,15 @@ export default function DashboardPage() {
     const [isUploading, setIsUploading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState('');
 
+    // Update document state
+    const [updateDocId, setUpdateDocId] = useState(null);
+    const [updateDocName, setUpdateDocName] = useState('');
+    const [isUpdating, setIsUpdating] = useState(false);
+
+    // Document detail state
+    const [detailDoc, setDetailDoc] = useState(null);
+    const [loadingDetail, setLoadingDetail] = useState(false);
+
     // Load user info and fetch data on mount
     useEffect(() => {
         const storedToken = localStorage.getItem('token');
@@ -146,6 +155,64 @@ export default function DashboardPage() {
             }
         } catch (err) {
             console.error('Delete error:', err);
+        }
+    };
+
+    // Handle document update
+    const handleUpdateDocument = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file || !updateDocId) return;
+
+        setIsUpdating(true);
+        setUploadProgress('Updating document...');
+        setError('');
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            const response = await fetch(`${API_URL}/admin/documents/${updateDocId}`, {
+                method: 'PUT',
+                headers: { 'Authorization': `Bearer ${token}` },
+                body: formData
+            });
+
+            if (!response.ok) {
+                const data = await response.json();
+                throw new Error(data.detail || 'Update failed');
+            }
+
+            setUploadProgress('Document updated successfully!');
+            await fetchDocuments(token);
+            await fetchStats(token);
+            setUpdateDocId(null);
+            setUpdateDocName('');
+            setTimeout(() => setUploadProgress(''), 3000);
+        } catch (err) {
+            console.error('Update error:', err);
+            setError(err.message || 'Update failed');
+            setUploadProgress('');
+        } finally {
+            setIsUpdating(false);
+            e.target.value = '';
+        }
+    };
+
+    // Fetch document detail with processing logs
+    const fetchDocumentDetail = async (docId) => {
+        setLoadingDetail(true);
+        try {
+            const response = await fetch(`${API_URL}/admin/documents/${docId}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (response.ok) {
+                const data = await response.json();
+                setDetailDoc(data);
+            }
+        } catch (err) {
+            console.error('Failed to fetch document detail:', err);
+        } finally {
+            setLoadingDetail(false);
         }
     };
 
@@ -359,8 +426,9 @@ export default function DashboardPage() {
                                 {documents.map((doc) => (
                                     <div
                                         key={doc.id}
-                                        className="flex flex-row items-center p-4 gap-4 rounded-lg"
+                                        className="flex flex-row items-center p-4 gap-4 rounded-lg cursor-pointer hover:bg-white/5 transition-all"
                                         style={{ backgroundColor: 'var(--color-bg-dark-primary)', border: '1px solid var(--color-border-slate)' }}
+                                        onClick={() => fetchDocumentDetail(doc.id)}
                                     >
                                         <div className="flex justify-center items-center w-10 h-10 rounded-lg" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)' }}>
                                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" strokeWidth="2">
@@ -378,9 +446,20 @@ export default function DashboardPage() {
                                         </div>
                                         {getStatusBadge(doc.status)}
                                         <button
+                                            onClick={() => { setUpdateDocId(doc.id); setUpdateDocName(doc.original_filename); }}
+                                            className="p-2 rounded-lg border-none cursor-pointer transition-all hover:opacity-80"
+                                            style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', color: '#3B82F6' }}
+                                            title="Update document"
+                                        >
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" />
+                                            </svg>
+                                        </button>
+                                        <button
                                             onClick={() => handleDeleteDocument(doc.id)}
                                             className="p-2 rounded-lg border-none cursor-pointer transition-all hover:opacity-80"
                                             style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#EF4444' }}
+                                            title="Delete document"
                                         >
                                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                                 <polyline points="3 6 5 6 21 6" />
@@ -492,7 +571,187 @@ export default function DashboardPage() {
                         </div>
                     </div>
                 </div>
-            </div >
+            </div>
+
+            {/* Update Document Modal */}
+            {updateDocId && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.7)' }}>
+                    <div className="p-6 rounded-2xl max-w-md w-full mx-4" style={{ backgroundColor: 'var(--color-bg-card)', border: '1px solid var(--color-border-slate)' }}>
+                        <h3 className="text-xl font-semibold text-white mb-2" style={{ fontFamily: 'var(--font-family-poppins)' }}>
+                            Update Document
+                        </h3>
+                        <p className="text-sm mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+                            Replace <strong style={{ color: '#3B82F6' }}>{updateDocName}</strong> with a new version
+                        </p>
+
+                        <div className="p-4 rounded-xl mb-4" style={{ backgroundColor: 'var(--color-bg-dark-primary)', border: '2px dashed var(--color-border-slate)' }}>
+                            <label className="flex flex-col items-center gap-3 cursor-pointer">
+                                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--color-button-primary)" strokeWidth="2">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" />
+                                </svg>
+                                <span className="text-white font-medium">{isUpdating ? 'Updating...' : 'Click to select new file'}</span>
+                                <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>PDF, DOCX, TXT, XLSX</span>
+                                <input
+                                    type="file"
+                                    accept=".pdf,.docx,.txt,.xlsx"
+                                    onChange={handleUpdateDocument}
+                                    disabled={isUpdating}
+                                    className="hidden"
+                                />
+                            </label>
+                        </div>
+
+                        <div className="flex justify-end gap-3">
+                            <button
+                                onClick={() => { setUpdateDocId(null); setUpdateDocName(''); }}
+                                disabled={isUpdating}
+                                className="px-4 py-2 rounded-lg border-none cursor-pointer transition-all hover:opacity-80 disabled:opacity-50"
+                                style={{ backgroundColor: 'var(--color-bg-dark-primary)', color: 'var(--color-text-primary)' }}
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Document Detail Modal */}
+            {detailDoc && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.8)' }}>
+                    <div className="rounded-2xl max-w-2xl w-full max-h-[85vh] overflow-hidden flex flex-col" style={{ backgroundColor: 'var(--color-bg-card)', border: '1px solid var(--color-border-slate)' }}>
+                        {/* Header */}
+                        <div className="p-6 border-b" style={{ borderColor: 'var(--color-border-slate)' }}>
+                            <div className="flex justify-between items-start">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)' }}>
+                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" strokeWidth="2">
+                                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                            <polyline points="14 2 14 8 20 8" />
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <h3 className="text-xl font-semibold text-white m-0" style={{ fontFamily: 'var(--font-family-poppins)' }}>
+                                            {detailDoc.original_filename}
+                                        </h3>
+                                        <p className="text-sm m-0 mt-1" style={{ color: 'var(--color-text-secondary)' }}>
+                                            {detailDoc.file_type?.toUpperCase()} • Version {detailDoc.version}
+                                        </p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => setDetailDoc(null)}
+                                    className="p-2 rounded-lg border-none cursor-pointer hover:bg-white/10 transition-all"
+                                    style={{ backgroundColor: 'transparent', color: 'var(--color-text-secondary)' }}
+                                >
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                        <path d="M18 6L6 18M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Content */}
+                        <div className="flex-1 overflow-y-auto p-6">
+                            {loadingDetail ? (
+                                <div className="flex items-center justify-center py-12">
+                                    <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2" style={{ borderColor: 'var(--color-button-primary)' }}></div>
+                                </div>
+                            ) : (
+                                <>
+                                    {/* Document Info Grid */}
+                                    <div className="grid grid-cols-2 gap-4 mb-6">
+                                        <div className="p-4 rounded-xl" style={{ backgroundColor: 'var(--color-bg-dark-primary)' }}>
+                                            <p className="text-xs uppercase mb-1" style={{ color: 'var(--color-text-secondary)' }}>Status</p>
+                                            {getStatusBadge(detailDoc.status)}
+                                        </div>
+                                        <div className="p-4 rounded-xl" style={{ backgroundColor: 'var(--color-bg-dark-primary)' }}>
+                                            <p className="text-xs uppercase mb-1" style={{ color: 'var(--color-text-secondary)' }}>Chunks</p>
+                                            <p className="text-white font-semibold m-0">{detailDoc.chunk_count || 0}</p>
+                                        </div>
+                                        <div className="p-4 rounded-xl" style={{ backgroundColor: 'var(--color-bg-dark-primary)' }}>
+                                            <p className="text-xs uppercase mb-1" style={{ color: 'var(--color-text-secondary)' }}>Created</p>
+                                            <p className="text-white text-sm m-0">{new Date(detailDoc.created_at).toLocaleString('id-ID')}</p>
+                                        </div>
+                                        <div className="p-4 rounded-xl" style={{ backgroundColor: 'var(--color-bg-dark-primary)' }}>
+                                            <p className="text-xs uppercase mb-1" style={{ color: 'var(--color-text-secondary)' }}>Updated</p>
+                                            <p className="text-white text-sm m-0">{new Date(detailDoc.updated_at).toLocaleString('id-ID')}</p>
+                                        </div>
+                                    </div>
+
+                                    {/* Processing Logs */}
+                                    <div>
+                                        <h4 className="text-lg font-semibold text-white mb-4" style={{ fontFamily: 'var(--font-family-poppins)' }}>
+                                            📋 Processing Logs
+                                        </h4>
+                                        {detailDoc.processing_logs && detailDoc.processing_logs.length > 0 ? (
+                                            <div className="space-y-3">
+                                                {detailDoc.processing_logs.map((log, idx) => (
+                                                    <div
+                                                        key={idx}
+                                                        className="flex items-start gap-3 p-3 rounded-lg"
+                                                        style={{ backgroundColor: 'var(--color-bg-dark-primary)' }}
+                                                    >
+                                                        <div className={`w-3 h-3 rounded-full mt-1 flex-shrink-0`} style={{
+                                                            backgroundColor: log.status === 'completed' ? '#22C55E' :
+                                                                log.status === 'failed' ? '#EF4444' :
+                                                                    log.status === 'running' ? '#3B82F6' : '#EAB308'
+                                                        }}></div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="flex items-center gap-2 mb-1">
+                                                                <span className="text-white font-medium">{log.step}</span>
+                                                                <span className="px-2 py-0.5 rounded text-xs" style={{
+                                                                    backgroundColor: log.status === 'completed' ? 'rgba(34, 197, 94, 0.2)' :
+                                                                        log.status === 'failed' ? 'rgba(239, 68, 68, 0.2)' :
+                                                                            'rgba(234, 179, 8, 0.2)',
+                                                                    color: log.status === 'completed' ? '#22C55E' :
+                                                                        log.status === 'failed' ? '#EF4444' : '#EAB308'
+                                                                }}>
+                                                                    {log.status}
+                                                                </span>
+                                                            </div>
+                                                            {log.message && (
+                                                                <p className="text-sm m-0 mb-1" style={{ color: 'var(--color-text-secondary)' }}>
+                                                                    {log.message}
+                                                                </p>
+                                                            )}
+                                                            <p className="text-xs m-0" style={{ color: 'var(--color-text-secondary)' }}>
+                                                                {new Date(log.started_at).toLocaleString('id-ID')}
+                                                                {log.ended_at && ` → ${new Date(log.ended_at).toLocaleString('id-ID')}`}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <div className="text-center py-8 rounded-xl" style={{ backgroundColor: 'var(--color-bg-dark-primary)', color: 'var(--color-text-secondary)' }}>
+                                                No processing logs available
+                                            </div>
+                                        )}
+                                    </div>
+                                </>
+                            )}
+                        </div>
+
+                        {/* Footer */}
+                        <div className="p-6 border-t flex justify-end gap-3" style={{ borderColor: 'var(--color-border-slate)' }}>
+                            <button
+                                onClick={() => { setDetailDoc(null); setUpdateDocId(detailDoc.id); setUpdateDocName(detailDoc.original_filename); }}
+                                className="px-4 py-2 rounded-lg border-none cursor-pointer transition-all hover:opacity-80"
+                                style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', color: '#3B82F6' }}
+                            >
+                                Update Document
+                            </button>
+                            <button
+                                onClick={() => setDetailDoc(null)}
+                                className="px-4 py-2 rounded-lg border-none cursor-pointer transition-all hover:opacity-80"
+                                style={{ backgroundColor: 'var(--color-bg-dark-primary)', color: 'var(--color-text-primary)' }}
+                            >
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

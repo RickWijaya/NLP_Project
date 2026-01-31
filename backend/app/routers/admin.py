@@ -591,7 +591,8 @@ async def update_tenant_settings(
     update_data = settings_update.model_dump(exclude_unset=True)
     for key, value in update_data.items():
         if key == "model_type" and value:
-            setattr(settings, key, ModelType(value))
+            # model_type column is String, not Enum
+            setattr(settings, key, value.value if hasattr(value, 'value') else str(value))
         elif value is not None:
             setattr(settings, key, value)
     

@@ -10,6 +10,7 @@ from app.database import get_db
 from app.models.document import Admin
 from app.schemas.auth import AdminCreate, AdminLogin, AdminResponse, TokenResponse
 from app.auth.jwt_handler import create_access_token, get_password_hash, verify_password
+from app.auth.dependencies import get_current_admin
 from app.config import get_settings
 
 settings = get_settings()
@@ -126,13 +127,10 @@ async def login(
 
 @router.get("/me", response_model=AdminResponse)
 async def get_current_admin_info(
-    db: AsyncSession = Depends(get_db),
-    admin: Admin = Depends(get_db)  # This will be replaced with proper dependency
+    admin: Admin = Depends(get_current_admin)
 ):
     """
     Get current admin information.
     Requires authentication.
     """
-    from app.auth.dependencies import get_current_admin
-    # This endpoint is available via the protected route
-    pass
+    return admin
