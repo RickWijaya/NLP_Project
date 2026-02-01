@@ -1,23 +1,61 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 
+// Backend API URL
+const API_URL = 'http://localhost:8000';
+
 export default function Home() {
+  const router = useRouter();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
 
     if (!username || !password) {
-      alert('Please fill in all fields');
+      setError('Please fill in all fields');
       return;
     }
-    console.log('Login attempt:', { username, password });
-    alert(`Login attempt with username: ${username}`);
+
+    setIsLoading(true);
+
+    try {
+      const response = await fetch(`${API_URL}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: username,
+          password: password
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.detail || 'Login failed');
+      }
+
+      // Save token and user info to localStorage
+      localStorage.setItem('token', data.access_token);
+      localStorage.setItem('username', username);
+      localStorage.setItem('tenant_id', data.tenant_id || 'default_tenant');
+
+      // Redirect to dashboard
+      router.push('/dashboard');
+    } catch (err) {
+      console.error('Login error:', err);
+      setError(err.message || 'Login failed. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -48,6 +86,13 @@ export default function Home() {
             LOGIN
           </h1>
         </div>
+
+        {/* Error Message */}
+        {error && (
+          <div className="w-full p-3 rounded-lg text-center" style={{ backgroundColor: 'rgba(239, 68, 68, 0.2)', border: '1px solid #ef4444', color: '#ef4444' }}>
+            {error}
+          </div>
+        )}
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="flex flex-col items-start gap-[20px] w-full">
@@ -117,14 +162,15 @@ export default function Home() {
           {/* Login Button */}
           <button
             type="submit"
-            className="w-full h-[50px] rounded-[8px] font-bold text-[18px] leading-[27px] text-center border-none cursor-pointer hover:opacity-90 transition-all duration-300 mt-2"
+            disabled={isLoading}
+            className="w-full h-[50px] rounded-[8px] font-bold text-[18px] leading-[27px] text-center border-none cursor-pointer hover:opacity-90 transition-all duration-300 mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
             style={{
               backgroundColor: 'var(--color-button-primary)',
               fontFamily: 'var(--font-family-poppins)',
               color: 'var(--color-text-primary)'
             }}
           >
-            Login
+            {isLoading ? 'Logging in...' : 'Login'}
           </button>
         </form>
 

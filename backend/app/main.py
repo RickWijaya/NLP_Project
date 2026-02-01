@@ -14,7 +14,7 @@ from fastapi.responses import Response
 
 from app.config import get_settings
 from app.database import init_db, close_db, async_session_maker
-from app.routers import auth, admin, chat
+from app.routers import auth, admin, chat, analytics
 from app.utils.logger import logger
 
 settings = get_settings()
@@ -116,6 +116,7 @@ if static_dir.exists():
 app.include_router(auth.router)
 app.include_router(admin.router)
 app.include_router(chat.router)
+app.include_router(analytics.router)
 
 
 @app.get("/")

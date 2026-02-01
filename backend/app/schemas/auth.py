@@ -42,6 +42,7 @@ class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     expires_in: int
+    tenant_id: str  # Required for frontend tenant isolation
 
 
 class TokenPayload(BaseModel):

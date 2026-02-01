@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Super Admin - RAG Service</title>
+    <style>
+        :root {
+            --bg: #0a0a0f;
+            --bg-card: #12121a;
+            --bg-input: #1a1a24;
+            --text: #e4e4e7;
+            --text-muted: #71717a;
+            --primary: #8b5cf6;
+            --primary-hover: #7c3aed;
+            --border: #27272a;
+            --success: #22c55e;
+            --warning: #f59e0b;
+            --error: #ef4444;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        .header {
+            background: var(--bg-card);
+            border-bottom: 1px solid var(--border);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .header .badge {
+            background: var(--primary);
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+        }
+
+        .logout-btn {
+            background: var(--error);
+            border: none;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+        }
+
+        .stat-card h3 {
+            color: var(--text-muted);
+            font-size: 0.875rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-card .value {
+            font-size: 2rem;
+            font-weight: bold;
+        }
+
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .card h2 {
+            margin-bottom: 1rem;
+            font-size: 1.25rem;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            text-align: left;
+            padding: 0.75rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        th {
+            color: var(--text-muted);
+            font-size: 0.875rem;
+        }
+
+        .status-active {
+            color: var(--success);
+        }
+
+        .status-inactive {
+            color: var(--error);
+        }
+
+        .btn {
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-size: 0.875rem;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-danger {
+            background: var(--error);
+            color: white;
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .login-container {
+            max-width: 400px;
+            margin: 100px auto;
+            padding: 2rem;
+        }
+
+        .login-form {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 2rem;
+        }
+
+        .login-form h2 {
+            margin-bottom: 1.5rem;
+            text-align: center;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: var(--text-muted);
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 0.75rem;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text);
+        }
+
+        .error-msg {
+            color: var(--error);
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+
+        .chart-container {
+            height: 200px;
+            display: flex;
+            align-items: flex-end;
+            gap: 4px;
+            padding-top: 1rem;
+        }
+
+        .chart-bar {
+            flex: 1;
+            background: var(--primary);
+            border-radius: 4px 4px 0 0;
+            min-height: 4px;
+            position: relative;
+        }
+
+        .chart-bar:hover {
+            opacity: 0.8;
+        }
+
+        .chart-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 0.5rem;
+            text-align: center;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Login View -->
+    <div id="login-view" class="login-container">
+        <div class="login-form">
+            <h2>🔐 Super Admin Login</h2>
+            <div id="login-error" class="error-msg hidden"></div>
+            <div class="form-group">
+                <label>Username</label>
+                <input type="text" id="username" placeholder="Admin username">
+            </div>
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" id="password" placeholder="Password">
+            </div>
+            <button class="btn btn-primary" style="width: 100%; margin-top: 1rem;" onclick="login()">Login</button>
+        </div>
+    </div>
+
+    <!-- Dashboard View -->
+    <div id="dashboard-view" class="hidden">
+        <div class="header">
+            <h1>👑 Super Admin <span class="badge">System Dashboard</span></h1>
+            <button class="logout-btn" onclick="logout()">Logout</button>
+        </div>
+
+        <div class="container">
+            <!-- Stats -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h3>Total Tenants</h3>
+                    <div class="value" id="stat-tenants">-</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Total Messages</h3>
+                    <div class="value" id="stat-messages">-</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Total Users</h3>
+                    <div class="value" id="stat-users">-</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Total Documents</h3>
+                    <div class="value" id="stat-documents">-</div>
+                </div>
+            </div>
+
+            <!-- Tenants Table -->
+            <div class="card">
+                <h2>📊 Tenant Management</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Tenant ID</th>
+                            <th>Username</th>
+                            <th>Email</th>
+                            <th>Messages</th>
+                            <th>Users</th>
+                            <th>Docs</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tenants-table">
+                        <tr>
+                            <td colspan="8" style="text-align:center;">Loading...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Per-Tenant Usage -->
+            <div class="card">
+                <h2>📈 Usage by Tenant</h2>
+                <div class="chart-container" id="usage-chart"></div>
+                <div id="chart-labels" style="display: flex; gap: 4px;"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let token = localStorage.getItem('superadmin_token');
+        let tenantsData = [];
+
+        async function init() {
+            if (token) {
+                const valid = await checkToken();
+                if (valid) {
+                    showDashboard();
+                    loadData();
+                } else {
+                    showLogin();
+                }
+            } else {
+                showLogin();
+            }
+        }
+
+        async function checkToken() {
+            try {
+                const res = await fetch('/analytics/superadmin/stats', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                return res.ok;
+            } catch {
+                return false;
+            }
+        }
+
+        function showLogin() {
+            document.getElementById('login-view').classList.remove('hidden');
+            document.getElementById('dashboard-view').classList.add('hidden');
+        }
+
+        function showDashboard() {
+            document.getElementById('login-view').classList.add('hidden');
+            document.getElementById('dashboard-view').classList.remove('hidden');
+        }
+
+        async function login() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const errorEl = document.getElementById('login-error');
+
+            try {
+                const res = await fetch('/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+
+                if (!res.ok) {
+                    const err = await res.json();
+                    errorEl.textContent = err.detail || 'Invalid credentials';
+                    errorEl.classList.remove('hidden');
+                    return;
+                }
+
+                const data = await res.json();
+                token = data.access_token;
+                localStorage.setItem('superadmin_token', token);
+
+                // Verify super admin access
+                const valid = await checkToken();
+                if (valid) {
+                    showDashboard();
+                    loadData();
+                } else {
+                    errorEl.textContent = 'Super admin access required';
+                    errorEl.classList.remove('hidden');
+                    localStorage.removeItem('superadmin_token');
+                }
+            } catch (err) {
+                errorEl.textContent = 'Login failed: ' + err.message;
+                errorEl.classList.remove('hidden');
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('superadmin_token');
+            token = null;
+            showLogin();
+        }
+
+        async function loadData() {
+            try {
+                // Load stats
+                const statsRes = await fetch('/analytics/superadmin/stats', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const stats = await statsRes.json();
+
+                document.getElementById('stat-tenants').textContent = stats.total_tenants;
+                document.getElementById('stat-messages').textContent = stats.total_messages;
+                document.getElementById('stat-users').textContent = stats.total_users;
+                document.getElementById('stat-documents').textContent = stats.total_documents;
+
+                // Load tenants
+                const tenantsRes = await fetch('/analytics/superadmin/tenants', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const tenantsInfo = await tenantsRes.json();
+                tenantsData = tenantsInfo.tenants;
+
+                // Merge with stats
+                const tenantStats = {};
+                stats.tenants.forEach(t => {
+                    tenantStats[t.tenant_id] = t;
+                });
+
+                renderTenantsTable(tenantsData, tenantStats);
+                renderUsageChart(stats.tenants);
+            } catch (err) {
+                console.error('Failed to load data:', err);
+            }
+        }
+
+        function renderTenantsTable(tenants, stats) {
+            const tbody = document.getElementById('tenants-table');
+            tbody.innerHTML = tenants.map(t => {
+                const s = stats[t.tenant_id] || {};
+                return `
+                    <tr>
+                        <td>${t.tenant_id}</td>
+                        <td>${t.username}</td>
+                        <td>${t.email}</td>
+                        <td>${s.total_messages || 0}</td>
+                        <td>${s.total_users || 0}</td>
+                        <td>${s.total_documents || 0}</td>
+                        <td class="${t.is_active ? 'status-active' : 'status-inactive'}">
+                            ${t.is_active ? '✓ Active' : '✗ Inactive'}
+                        </td>
+                        <td>
+                            <button class="btn ${t.is_active ? 'btn-danger' : 'btn-success'}" 
+                                    onclick="toggleTenant('${t.tenant_id}')">
+                                ${t.is_active ? 'Disable' : 'Enable'}
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function renderUsageChart(tenants) {
+            const container = document.getElementById('usage-chart');
+            const labels = document.getElementById('chart-labels');
+
+            if (tenants.length === 0) {
+                container.innerHTML = '<div style="color: var(--text-muted);">No data</div>';
+                return;
+            }
+
+            const maxMsgs = Math.max(...tenants.map(t => t.total_messages), 1);
+
+            container.innerHTML = tenants.map(t => {
+                const height = Math.max(4, (t.total_messages / maxMsgs) * 180);
+                return `<div class="chart-bar" style="height: ${height}px;" title="${t.tenant_id}: ${t.total_messages} messages"></div>`;
+            }).join('');
+
+            labels.innerHTML = tenants.map(t =>
+                `<div class="chart-label" style="flex:1; overflow:hidden; text-overflow:ellipsis;">${t.tenant_id.substring(0, 8)}</div>`
+            ).join('');
+        }
+
+        async function toggleTenant(tenantId) {
+            try {
+                const res = await fetch(`/analytics/superadmin/tenants/${tenantId}/toggle`, {
+                    method: 'PUT',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (res.ok) {
+                    loadData(); // Reload
+                } else {
+                    alert('Failed to toggle tenant');
+                }
+            } catch (err) {
+                alert('Error: ' + err.message);
+            }
+        }
+
+        init();
+    </script>
+</body>
+
+</html>
