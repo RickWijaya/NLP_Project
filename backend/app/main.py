@@ -38,7 +38,8 @@ async def seed_database():
                 email="admin@example.com",
                 hashed_password=get_password_hash("admin123"),
                 tenant_id="default_tenant",
-                is_active=True
+                is_active=True,
+                is_super_admin=True
             )
             db.add(admin_user)
             await db.commit()
@@ -111,6 +112,11 @@ app.add_middleware(
 static_dir = Path(__file__).parent.parent / "static"
 if static_dir.exists():
     app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
+
+# Mount uploads directory to serve documents
+uploads_dir = Path(settings.upload_dir)
+uploads_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=str(uploads_dir)), name="uploads")
 
 # Include routers
 app.include_router(auth.router)

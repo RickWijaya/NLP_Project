@@ -4,9 +4,13 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
+import {
+    AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+    BarChart, Bar, Cell
+} from 'recharts';
 
 // Backend API URL
-const API_URL = 'http://localhost:8000';
+const API_URL = 'http://127.0.0.1:8000';
 
 export default function DashboardPage() {
     const router = useRouter();
@@ -20,7 +24,8 @@ export default function DashboardPage() {
         total_documents: 0,
         completed_documents: 0,
         total_chunks: 0,
-        pending_documents: 0
+        pending_documents: 0,
+        traffic: []
     });
 
     // Documents list
@@ -40,6 +45,10 @@ export default function DashboardPage() {
     // Document detail state
     const [detailDoc, setDetailDoc] = useState(null);
     const [loadingDetail, setLoadingDetail] = useState(false);
+
+    // Delete confirmation state
+    const [deleteConfirm, setDeleteConfirm] = useState(null); // {id, name}
+    const [isDeleting, setIsDeleting] = useState(false);
 
     // Load user info and fetch data on mount
     useEffect(() => {
@@ -73,7 +82,8 @@ export default function DashboardPage() {
                     total_documents: Object.values(data.document_counts || {}).reduce((a, b) => a + b, 0),
                     completed_documents: data.document_counts?.completed || 0,
                     total_chunks: data.total_chunks || 0,
-                    pending_documents: data.document_counts?.pending || 0
+                    pending_documents: data.document_counts?.pending || 0,
+                    traffic: data.traffic || []
                 });
             }
         } catch (err) {
@@ -140,21 +150,33 @@ export default function DashboardPage() {
         }
     };
 
-    const handleDeleteDocument = async (documentId) => {
-        if (!confirm('Are you sure you want to delete this document?')) return;
+    const handleDeleteDocument = (documentId, filename) => {
+        setDeleteConfirm({ id: documentId, name: filename });
+    };
 
+    const confirmDelete = async () => {
+        if (!deleteConfirm) return;
+
+        setIsDeleting(true);
         try {
-            const response = await fetch(`${API_URL}/admin/documents/${documentId}`, {
+            const response = await fetch(`${API_URL}/admin/documents/${deleteConfirm.id}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${token}` }
             });
 
             if (response.ok) {
+                setDeleteConfirm(null);
                 await fetchDocuments(token);
                 await fetchStats(token);
+            } else {
+                const data = await response.json();
+                setError(data.detail || 'Delete failed');
             }
         } catch (err) {
             console.error('Delete error:', err);
+            setError('Delete failed due to network error');
+        } finally {
+            setIsDeleting(false);
         }
     };
 
@@ -352,6 +374,64 @@ export default function DashboardPage() {
                         ))}
                     </div>
 
+                    {/* Message Traffic Chart */}
+                    <div className="flex flex-col p-6 gap-6 rounded-xl" style={{ backgroundColor: 'var(--color-bg-card)', border: '1px solid var(--color-border-slate)' }}>
+                        <div className="flex flex-row justify-between items-center">
+                            <h3 className="font-semibold text-[20px] leading-6 tracking-[-0.006em] text-[#E5E7EB] m-0" style={{ fontFamily: 'var(--font-family-jakarta)' }}>
+                                Messages (Last 7 Days)
+                            </h3>
+                            <div className="flex items-center gap-2">
+                                <span className="w-3 h-3 rounded-full animate-pulse" style={{ backgroundColor: 'var(--color-button-primary)' }}></span>
+                                <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>Live Traffic</span>
+                            </div>
+                        </div>
+
+                        <div className="h-[300px] w-full mt-4">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <AreaChart data={stats.traffic}>
+                                    <defs>
+                                        <linearGradient id="colorMessages" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="var(--color-button-primary)" stopOpacity={0.3} />
+                                            <stop offset="95%" stopColor="var(--color-button-primary)" stopOpacity={0} />
+                                        </linearGradient>
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                                    <XAxis
+                                        dataKey="date"
+                                        axisLine={false}
+                                        tickLine={false}
+                                        tick={{ fill: 'var(--color-text-secondary)', fontSize: 12 }}
+                                        dy={10}
+                                    />
+                                    <YAxis
+                                        axisLine={false}
+                                        tickLine={false}
+                                        tick={{ fill: 'var(--color-text-secondary)', fontSize: 12 }}
+                                    />
+                                    <Tooltip
+                                        contentStyle={{
+                                            backgroundColor: 'var(--color-bg-card)',
+                                            borderRadius: '12px',
+                                            border: '1px solid var(--color-border-slate)',
+                                            boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+                                            color: '#fff'
+                                        }}
+                                        itemStyle={{ color: 'var(--color-button-primary)' }}
+                                    />
+                                    <Area
+                                        type="monotone"
+                                        dataKey="messages"
+                                        stroke="var(--color-button-primary)"
+                                        strokeWidth={3}
+                                        fillOpacity={1}
+                                        fill="url(#colorMessages)"
+                                        animationDuration={1500}
+                                    />
+                                </AreaChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+
                     {/* Upload Section */}
                     <div className="flex flex-col p-6 gap-5 rounded-xl" style={{ backgroundColor: 'var(--color-bg-card)', border: '1px solid var(--color-border-slate)' }}>
                         <h3 className="font-semibold text-[20px] leading-6 tracking-[-0.006em] text-[#E5E7EB] m-0" style={{ fontFamily: 'var(--font-family-jakarta)' }}>
@@ -456,7 +536,7 @@ export default function DashboardPage() {
                                             </svg>
                                         </button>
                                         <button
-                                            onClick={() => handleDeleteDocument(doc.id)}
+                                            onClick={(e) => { e.stopPropagation(); handleDeleteDocument(doc.id, doc.original_filename); }}
                                             className="p-2 rounded-lg border-none cursor-pointer transition-all hover:opacity-80"
                                             style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#EF4444' }}
                                             title="Delete document"
@@ -752,6 +832,63 @@ export default function DashboardPage() {
                     </div>
                 </div>
             )}
+
+            {/* Custom Delete Confirmation Modal */}
+            {deleteConfirm && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-300">
+                    <div
+                        className="w-full max-w-md bg-[#1a1c20] rounded-3xl border border-white/10 shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-300"
+                        style={{ boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 40px rgba(239, 68, 68, 0.1)' }}
+                    >
+                        {/* Header/Icon */}
+                        <div className="pt-8 pb-4 flex flex-col items-center">
+                            <div className="w-16 h-16 rounded-2xl bg-red-500/10 flex items-center justify-center border border-red-500/20 mb-4">
+                                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" className="text-red-500">
+                                    <path d="M19 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                    <path d="M10 11v6M14 11v6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                            </div>
+                            <h3 className="text-xl font-bold text-white tracking-tight">Delete Document?</h3>
+                        </div>
+
+                        {/* Body */}
+                        <div className="px-8 pb-8 text-center" style={{ fontFamily: 'var(--font-family-jakarta)' }}>
+                            <p className="text-white/60 text-sm leading-relaxed m-0 text-center">
+                                Are you sure you want to delete <span className="text-red-400 font-semibold italic">"{deleteConfirm.name}"</span>?
+                            </p>
+                            <p className="text-white/40 text-[11px] mt-2 m-0 uppercase tracking-widest font-bold text-center">
+                                This action is permanent
+                            </p>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="p-6 bg-black/20 flex gap-3">
+                            <button
+                                onClick={() => setDeleteConfirm(null)}
+                                disabled={isDeleting}
+                                className="flex-1 px-6 py-3 rounded-xl bg-white/5 border border-white/10 text-sm font-bold text-white/60 hover:text-white hover:bg-white/10 transition-all disabled:opacity-50"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={confirmDelete}
+                                disabled={isDeleting}
+                                className="flex-1 px-6 py-3 rounded-xl bg-red-500 text-white text-sm font-bold shadow-lg shadow-red-500/20 hover:bg-red-600 active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                            >
+                                {isDeleting ? (
+                                    <>
+                                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                        <span>Deleting...</span>
+                                    </>
+                                ) : (
+                                    <span>Yes, Delete</span>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
         </div>
     );
 }

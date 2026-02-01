@@ -114,7 +114,8 @@ class VectorStore:
                     "document_version": chunk.document_version,
                     "source_filename": chunk.source_filename,
                     "chunk_index": chunk.chunk_index,
-                    "token_count": chunk.token_count
+                    "token_count": chunk.token_count,
+                    "page_label": getattr(chunk, 'page_label', "1")
                 })
             
             # Add to collection

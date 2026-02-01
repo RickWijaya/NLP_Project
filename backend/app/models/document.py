@@ -38,6 +38,7 @@ class Admin(Base):
     tenant_id = Column(String(100), unique=True, nullable=False, index=True)
     business_name = Column(String(255), nullable=True)  # Optional business name
     is_active = Column(Boolean, default=True)
+    is_super_admin = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     
     # Relationships
