@@ -1,5 +1,4 @@
 'use client';
-
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
@@ -511,10 +510,12 @@ export default function DashboardPage() {
                                         onClick={() => fetchDocumentDetail(doc.id)}
                                     >
                                         <div className="flex justify-center items-center w-10 h-10 rounded-lg" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)' }}>
-                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" strokeWidth="2">
-                                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                                                <polyline points="14 2 14 8 20 8" />
-                                            </svg>
+                                           <Image
+                                             src={`/dashboard/${doc.file_type}.png`}
+                                             width={20}
+                                             height={20}
+                                             /> 
+
                                         </div>
                                         <div className="flex flex-col gap-1 flex-1">
                                             <p className="font-medium text-[14px] text-[#E5E7EB] m-0" style={{ fontFamily: 'var(--font-family-jakarta)' }}>
@@ -624,7 +625,7 @@ export default function DashboardPage() {
                         </div>
                         <div className="flex flex-row gap-3 items-center">
                             <div className="flex-1 px-4 py-3 rounded-lg" style={{ backgroundColor: 'var(--color-bg-dark-primary)', border: '1px solid var(--color-border-slate)' }}>
-                                <code className="text-sm" style={{ color: '#00C0E8' }}>{publicChatLink || 'Loading...'}</code>
+                                <a target='_blank' href={publicChatLink} className="underline text-sm" style={{ color: '#00C0E8' }}>{publicChatLink || 'Loading...'}</a>
                             </div>
                             <button
                                 onClick={handleCopyLink}
