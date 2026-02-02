@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 
-const API_URL = 'http://localhost:8000';
+const API_URL = 'http://127.0.0.1:8000';
 
 export default function ModelsPage() {
     const router = useRouter();
@@ -43,10 +43,14 @@ export default function ModelsPage() {
                 const data = await response.json();
                 setApiModels(data.api_models || []);
                 setLocalModels(data.local_models || []);
+            } else {
+                const errorData = await response.json().catch(() => ({}));
+                console.error('Fetch models failed with status:', response.status, errorData);
+                setError(`Server returned ${response.status}: ${errorData.detail || 'Failed to load models'}`);
             }
         } catch (err) {
             console.error('Failed to fetch models:', err);
-            setError('Failed to load models');
+            setError('Failed to connect to server');
         } finally {
             setLoading(false);
         }
@@ -273,7 +277,7 @@ export default function ModelsPage() {
                                             </p>
                                         </div>
                                         <div className="flex items-center gap-2">
-                                            {model.downloaded && (
+                                            {model.is_downloaded && (
                                                 <span className="px-2 py-1 rounded text-xs" style={{ backgroundColor: 'rgba(59, 130, 246, 0.2)', color: '#3B82F6' }}>
                                                     Downloaded
                                                 </span>
@@ -296,7 +300,7 @@ export default function ModelsPage() {
                                                 </span>
                                             )}
                                         </div>
-                                        {!isCurrentModel(model.key, 'local') && model.downloaded && (
+                                        {!isCurrentModel(model.key, 'local') && model.is_downloaded && (
                                             <button
                                                 onClick={() => handleSelectModel(model.key, 'local')}
                                                 className="px-4 py-2 rounded-lg border-none cursor-pointer transition-all hover:opacity-80"
@@ -305,7 +309,7 @@ export default function ModelsPage() {
                                                 Use This Model
                                             </button>
                                         )}
-                                        {!model.downloaded && (
+                                        {!model.is_downloaded && (
                                             <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
                                                 Not downloaded
                                             </span>

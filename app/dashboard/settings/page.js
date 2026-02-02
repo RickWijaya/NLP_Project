@@ -48,7 +48,7 @@ export default function SettingsPage() {
 
     const fetchSettings = async (authToken) => {
         try {
-            const response = await fetch('http://localhost:8000/admin/settings', {
+            const response = await fetch('http://127.0.0.1:8000/admin/settings', {
                 headers: { 'Authorization': `Bearer ${authToken}` }
             });
 
@@ -68,7 +68,7 @@ export default function SettingsPage() {
 
     const fetchAvailableModels = async (authToken) => {
         try {
-            const response = await fetch('http://localhost:8000/admin/available-models', {
+            const response = await fetch('http://127.0.0.1:8000/admin/available-models', {
                 headers: { 'Authorization': `Bearer ${authToken}` }
             });
 
@@ -90,7 +90,7 @@ export default function SettingsPage() {
             // Exclude read-only fields
             const { tenant_id, id, created_at, updated_at, ...settingsToSave } = settings;
 
-            const response = await fetch('http://localhost:8000/admin/settings', {
+            const response = await fetch('http://127.0.0.1:8000/admin/settings', {
                 method: 'PUT',
                 headers: {
                     'Authorization': `Bearer ${token}`,

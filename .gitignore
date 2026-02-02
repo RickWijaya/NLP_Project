@@ -40,3 +40,13 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 README.md
+
+# Backend
+__pycache__/
+*.py[cod]
+*.class
+venv/
+backend/venv/
+chroma_db/
+logs/
+uploads/

@@ -4,8 +4,9 @@ Generates contextually relevant follow-up questions based on the conversation.
 """
 
 from typing import List, Optional
+from app.modules.llm import llm_generator
+import re
 from app.utils.logger import logger
-
 
 # Template-based suggestions for common scenarios
 SUGGESTION_TEMPLATES = {
@@ -39,60 +40,85 @@ def generate_suggestions(
     max_suggestions: int = 3
 ) -> List[str]:
     """
-    Generate suggested follow-up questions.
-    
-    Args:
-        question: Original user question
-        answer: AI's response
-        context_snippets: Retrieved document snippets (for context-aware suggestions)
-        max_suggestions: Maximum number of suggestions to return
-        
-    Returns:
-        List of suggested follow-up questions
+    Generate suggested follow-up questions using LLM with template fallback.
     """
+    try:
+        # Prepare context for LLM
+        context_str = "\n".join([f"- {s[:200]}" for s in context_snippets]) if context_snippets else "No specific document context available."
+        
+        prompt = f"""You are an AI assistant helping a customer. 
+Based on the conversation below, generate {max_suggestions} short, relevant follow-up questions that the user might want to ask next.
+
+User Question: "{question}"
+AI Response: "{answer[:500]}..."
+
+Retrieved Context Info:
+{context_str}
+
+Rules:
+1. Questions must be brief (max 10 words).
+2. Questions must be relevant to the AI response or the context provided.
+3. Output ONLY a bulleted list of {max_suggestions} questions.
+4. No intro/outro text.
+5. Use the same language as the conversation (e.g., if the user asks in Indonesian, suggest in Indonesian).
+
+Output Format:
+- Question 1?
+- Question 2?
+- Question 3?
+"""
+        
+        response = llm_generator.generate(
+            messages=[
+                {"role": "system", "content": "You are a helpful customer support assistant."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.7,
+            max_tokens=150
+        )
+        
+        # Extract questions
+        # Extract questions - allow for lines without question marks but ensure they are cleaned
+        content = response["content"]
+        suggestions = re.findall(r'^\s*[-*•\d\.]+\s*(.+)$', content, re.MULTILINE)
+        
+        # Clean up: remove quotes and ensure a question mark if missing
+        processed_suggestions = []
+        for s in suggestions:
+            clean_s = s.strip().strip('"').strip("'")
+            if clean_s:
+                if not clean_s.endswith('?'):
+                    clean_s += '?'
+                processed_suggestions.append(clean_s)
+        
+        if not processed_suggestions:
+            logger.warning("LLM generated no valid suggestions, falling back to templates")
+            return _get_template_suggestions(question, max_suggestions)
+            
+        # Deduplicate while preserving order
+        unique_suggestions = list(dict.fromkeys(processed_suggestions))
+        return unique_suggestions[:max_suggestions]
+
+    except Exception as e:
+        logger.error(f"Failed to generate LLM suggestions: {e}")
+        return _get_template_suggestions(question, max_suggestions)
+
+
+def _get_template_suggestions(question: str, max_suggestions: int) -> List[str]:
+    """Fallback template-based suggestions."""
     suggestions = []
-    
-    # Analyze the question type for template selection
     question_lower = question.lower()
     
-    # Check for greeting/introduction
     if any(word in question_lower for word in ['hello', 'hi', 'hey', 'help']):
         suggestions.extend(SUGGESTION_TEMPLATES["greeting"])
-    
-    # Check for product-related
     elif any(word in question_lower for word in ['product', 'buy', 'price', 'cost', 'service']):
         suggestions.extend(SUGGESTION_TEMPLATES["product"])
-    
-    # Check for support-related
     elif any(word in question_lower for word in ['order', 'return', 'refund', 'issue', 'problem', 'help']):
         suggestions.extend(SUGGESTION_TEMPLATES["support"])
-    
-    # Default to general suggestions
     else:
         suggestions.extend(SUGGESTION_TEMPLATES["general"])
     
-    # Generate context-aware suggestions if context is available
-    if context_snippets:
-        # Extract topics from context that weren't asked about
-        for snippet in context_snippets[:2]:
-            if len(suggestions) >= max_suggestions:
-                break
-            # Simple topic extraction (could be enhanced with NLP)
-            words = snippet.split()[:10]
-            if words:
-                topic_hint = ' '.join(words[:5])
-                if topic_hint not in question_lower:
-                    suggestions.append(f"Tell me more about {topic_hint}...")
-    
-    # Deduplicate and limit
-    seen = set()
-    unique_suggestions = []
-    for s in suggestions:
-        if s.lower() not in seen:
-            seen.add(s.lower())
-            unique_suggestions.append(s)
-    
-    return unique_suggestions[:max_suggestions]
+    return list(dict.fromkeys(suggestions))[:max_suggestions]
 
 
 def get_default_suggestions() -> List[str]:

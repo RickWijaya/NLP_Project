@@ -2,6 +2,15 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import {
+    AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
+} from 'recharts';
+import {
+    MessageCircle, Users, FileText, Layout,
+    Calendar, BarChart3, TrendingUp, RefreshCw
+} from 'lucide-react';
+
+const API_URL = 'http://127.0.0.1:8000';
 
 export default function AnalyticsPage() {
     const router = useRouter();
@@ -31,7 +40,7 @@ export default function AnalyticsPage() {
 
     const fetchAnalytics = async (authToken) => {
         try {
-            const response = await fetch('http://localhost:8000/analytics/summary', {
+            const response = await fetch(`${API_URL}/analytics/summary`, {
                 headers: { 'Authorization': `Bearer ${authToken}` }
             });
 
@@ -78,142 +87,193 @@ export default function AnalyticsPage() {
             )}
 
             {/* Stats Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
                 {/* Total Messages */}
-                <div className="bg-gradient-to-br from-purple-600/20 to-purple-800/20 rounded-xl p-5 border border-purple-500/30">
-                    <div className="flex items-center justify-between mb-2">
-                        <span className="text-gray-400 text-sm">Total Messages</span>
-                        <span className="text-2xl">💬</span>
+                <div className="bg-[#1e293b] rounded-2xl p-6 border border-slate-800 transition-all hover:scale-[1.02] hover:border-slate-700 shadow-lg">
+                    <div className="flex items-center justify-between mb-4">
+                        <div className="p-3 rounded-xl bg-purple-500/10 text-purple-400">
+                            <MessageCircle size={24} />
+                        </div>
+                        <span className="text-xs font-medium text-slate-500 uppercase tracking-wider">Messages</span>
                     </div>
-                    <p className="text-3xl font-bold text-white">{analytics.total_messages.toLocaleString()}</p>
+                    <p className="text-gray-400 text-sm mb-1">Total Messages</p>
+                    <p className="text-3xl font-bold text-white tracking-tight">{analytics.total_messages.toLocaleString()}</p>
                 </div>
 
                 {/* Total Sessions */}
-                <div className="bg-gradient-to-br from-blue-600/20 to-blue-800/20 rounded-xl p-5 border border-blue-500/30">
-                    <div className="flex items-center justify-between mb-2">
-                        <span className="text-gray-400 text-sm">Chat Sessions</span>
-                        <span className="text-2xl">🗨️</span>
+                <div className="bg-[#1e293b] rounded-2xl p-6 border border-slate-800 transition-all hover:scale-[1.02] hover:border-slate-700 shadow-lg">
+                    <div className="flex items-center justify-between mb-4">
+                        <div className="p-3 rounded-xl bg-blue-500/10 text-blue-400">
+                            <Layout size={24} />
+                        </div>
+                        <span className="text-xs font-medium text-slate-500 uppercase tracking-wider">Sessions</span>
                     </div>
-                    <p className="text-3xl font-bold text-white">{analytics.total_sessions.toLocaleString()}</p>
+                    <p className="text-gray-400 text-sm mb-1">Chat Sessions</p>
+                    <p className="text-3xl font-bold text-white tracking-tight">{analytics.total_sessions.toLocaleString()}</p>
                 </div>
 
                 {/* Total Users */}
-                <div className="bg-gradient-to-br from-green-600/20 to-green-800/20 rounded-xl p-5 border border-green-500/30">
-                    <div className="flex items-center justify-between mb-2">
-                        <span className="text-gray-400 text-sm">Unique Users</span>
-                        <span className="text-2xl">👥</span>
+                <div className="bg-[#1e293b] rounded-2xl p-6 border border-slate-800 transition-all hover:scale-[1.02] hover:border-slate-700 shadow-lg">
+                    <div className="flex items-center justify-between mb-4">
+                        <div className="p-3 rounded-xl bg-green-500/10 text-green-400">
+                            <Users size={24} />
+                        </div>
+                        <span className="text-xs font-medium text-slate-500 uppercase tracking-wider">Users</span>
                     </div>
-                    <p className="text-3xl font-bold text-white">{analytics.total_users.toLocaleString()}</p>
+                    <p className="text-gray-400 text-sm mb-1">Unique Users</p>
+                    <p className="text-3xl font-bold text-white tracking-tight">{analytics.total_users.toLocaleString()}</p>
                 </div>
 
                 {/* Total Documents */}
-                <div className="bg-gradient-to-br from-orange-600/20 to-orange-800/20 rounded-xl p-5 border border-orange-500/30">
-                    <div className="flex items-center justify-between mb-2">
-                        <span className="text-gray-400 text-sm">Documents</span>
-                        <span className="text-2xl">📄</span>
+                <div className="bg-[#1e293b] rounded-2xl p-6 border border-slate-800 transition-all hover:scale-[1.02] hover:border-slate-700 shadow-lg">
+                    <div className="flex items-center justify-between mb-4">
+                        <div className="p-3 rounded-xl bg-amber-500/10 text-amber-400">
+                            <FileText size={24} />
+                        </div>
+                        <span className="text-xs font-medium text-slate-500 uppercase tracking-wider">Knowledge</span>
                     </div>
-                    <p className="text-3xl font-bold text-white">{analytics.total_documents.toLocaleString()}</p>
+                    <p className="text-gray-400 text-sm mb-1">Documents</p>
+                    <p className="text-3xl font-bold text-white tracking-tight">{analytics.total_documents.toLocaleString()}</p>
                 </div>
             </div>
 
             {/* Time-based Stats */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                 {/* Messages Today */}
-                <div className="bg-[#1E1E2E] rounded-xl p-6 border border-gray-700">
-                    <div className="flex items-center gap-3 mb-4">
-                        <div className="w-12 h-12 rounded-full bg-purple-500/20 flex items-center justify-center">
-                            <span className="text-2xl">📅</span>
+                <div className="bg-[#1e293b] rounded-2xl p-6 border border-slate-800 shadow-lg">
+                    <div className="flex items-center gap-4 mb-6">
+                        <div className="w-12 h-12 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-400">
+                            <Calendar size={24} />
                         </div>
                         <div>
-                            <p className="text-gray-400 text-sm">Messages Today</p>
-                            <p className="text-2xl font-bold text-white">{analytics.messages_today.toLocaleString()}</p>
+                            <p className="text-slate-400 text-xs font-medium uppercase tracking-wider">Messages Today</p>
+                            <p className="text-3xl font-bold text-white tracking-tight">{analytics.messages_today.toLocaleString()}</p>
                         </div>
                     </div>
-                    <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
+                    <div className="h-2.5 bg-slate-800 rounded-full overflow-hidden">
                         <div
-                            className="h-full bg-gradient-to-r from-purple-500 to-pink-500 transition-all duration-500"
+                            className="h-full bg-gradient-to-r from-purple-500 to-pink-500 transition-all duration-1000 ease-out"
                             style={{ width: `${Math.min((analytics.messages_today / Math.max(analytics.messages_this_week, 1)) * 100, 100)}%` }}
                         ></div>
                     </div>
+                    <p className="text-xs text-slate-500 mt-3 flex items-center gap-1.5">
+                        <TrendingUp size={14} />
+                        {analytics.messages_today > 0 ? "Tracking activity" : "Waiting for messages"}
+                    </p>
                 </div>
 
                 {/* Messages This Week */}
-                <div className="bg-[#1E1E2E] rounded-xl p-6 border border-gray-700">
-                    <div className="flex items-center gap-3 mb-4">
-                        <div className="w-12 h-12 rounded-full bg-blue-500/20 flex items-center justify-center">
-                            <span className="text-2xl">📆</span>
+                <div className="bg-[#1e293b] rounded-2xl p-6 border border-slate-800 shadow-lg">
+                    <div className="flex items-center gap-4 mb-6">
+                        <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-400">
+                            <BarChart3 size={24} />
                         </div>
                         <div>
-                            <p className="text-gray-400 text-sm">Messages This Week</p>
-                            <p className="text-2xl font-bold text-white">{analytics.messages_this_week.toLocaleString()}</p>
+                            <p className="text-slate-400 text-xs font-medium uppercase tracking-wider">Messages This Week</p>
+                            <p className="text-3xl font-bold text-white tracking-tight">{analytics.messages_this_week.toLocaleString()}</p>
                         </div>
                     </div>
-                    <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
+                    <div className="h-2.5 bg-slate-800 rounded-full overflow-hidden">
                         <div
-                            className="h-full bg-gradient-to-r from-blue-500 to-cyan-500 transition-all duration-500"
+                            className="h-full bg-gradient-to-r from-blue-500 to-cyan-500 transition-all duration-1000 ease-out shadow-[0_0_10px_rgba(59,130,246,0.5)]"
                             style={{ width: `${Math.min((analytics.messages_this_week / Math.max(analytics.total_messages, 1)) * 100, 100)}%` }}
                         ></div>
                     </div>
+                    <p className="text-xs text-slate-500 mt-3 flex items-center gap-1.5">
+                        <TrendingUp size={14} />
+                        Weekly engagement trend
+                    </p>
                 </div>
             </div>
 
             {/* Daily Messages Chart */}
-            <div className="bg-[#1E1E2E] rounded-xl p-6 border border-gray-700">
-                <h2 className="text-xl font-semibold text-white mb-6 flex items-center gap-2">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                    </svg>
-                    Messages (Last 7 Days)
-                </h2>
-
-                {analytics.daily_messages.length > 0 ? (
-                    <div className="flex items-end justify-between gap-2 h-48">
-                        {analytics.daily_messages.map((day, index) => {
-                            const height = maxDailyMessages > 0
-                                ? (day.count / maxDailyMessages) * 100
-                                : 0;
-                            const date = new Date(day.date);
-                            const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
-
-                            return (
-                                <div key={day.date} className="flex-1 flex flex-col items-center gap-2">
-                                    {/* Bar */}
-                                    <div className="w-full relative flex-1 flex items-end justify-center">
-                                        <div
-                                            className="w-full max-w-[40px] rounded-t-lg bg-gradient-to-t from-purple-600 to-pink-500 transition-all duration-500 hover:from-purple-500 hover:to-pink-400"
-                                            style={{ height: `${Math.max(height, 5)}%` }}
-                                        >
-                                            {/* Tooltip */}
-                                            <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 hover:opacity-100 transition-opacity whitespace-nowrap">
-                                                {day.count} messages
-                                            </div>
-                                        </div>
-                                    </div>
-                                    {/* Count */}
-                                    <span className="text-xs text-gray-400 font-medium">{day.count}</span>
-                                    {/* Day label */}
-                                    <span className="text-xs text-gray-500">{dayName}</span>
-                                </div>
-                            );
-                        })}
+            <div className="bg-[#1e293b] rounded-2xl p-8 border border-slate-800 shadow-xl mb-8">
+                <div className="flex flex-row justify-between items-center mb-10">
+                    <h2 className="text-xl font-bold text-white flex items-center gap-3">
+                        <BarChart3 className="text-purple-400" size={24} />
+                        Messages Traffic (7 Days)
+                    </h2>
+                    <div className="flex items-center gap-2 bg-slate-900/50 px-3 py-1.5 rounded-full border border-slate-800">
+                        <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Live Updates</span>
                     </div>
-                ) : (
-                    <div className="h-48 flex items-center justify-center text-gray-500">
-                        No data available yet
-                    </div>
-                )}
+                </div>
+
+                <div className="h-[350px] w-full">
+                    {analytics.daily_messages.length > 0 ? (
+                        <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={analytics.daily_messages}>
+                                <defs>
+                                    <linearGradient id="colorCount" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3} />
+                                        <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
+                                    </linearGradient>
+                                </defs>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} opacity={0.3} />
+                                <XAxis
+                                    dataKey="date"
+                                    axisLine={false}
+                                    tickLine={false}
+                                    tick={{ fill: '#94a3b8', fontSize: 11 }}
+                                    tickFormatter={(str) => {
+                                        const date = new Date(str);
+                                        return date.toLocaleDateString('en-US', { weekday: 'short' });
+                                    }}
+                                    dy={15}
+                                />
+                                <YAxis
+                                    axisLine={false}
+                                    tickLine={false}
+                                    tick={{ fill: '#94a3b8', fontSize: 11 }}
+                                    tickCount={6}
+                                />
+                                <Tooltip
+                                    contentStyle={{
+                                        backgroundColor: '#0f172a',
+                                        borderRadius: '16px',
+                                        border: '1px solid #334155',
+                                        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5)',
+                                        color: '#fff',
+                                        padding: '12px'
+                                    }}
+                                    itemStyle={{ color: '#8b5cf6', fontWeight: 'bold' }}
+                                    labelStyle={{ color: '#94a3b8', marginBottom: '4px', fontSize: '11px' }}
+                                    formatter={(value) => [`${value} Messages`, 'Traffic']}
+                                    labelFormatter={(label) => new Date(label).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                />
+                                <Area
+                                    type="monotone"
+                                    dataKey="count"
+                                    stroke="#8b5cf6"
+                                    strokeWidth={4}
+                                    fillOpacity={1}
+                                    fill="url(#colorCount)"
+                                    animationDuration={2000}
+                                />
+                            </AreaChart>
+                        </ResponsiveContainer>
+                    ) : (
+                        <div className="h-full flex flex-col items-center justify-center text-slate-500 gap-4">
+                            <div className="w-16 h-16 rounded-full bg-slate-800/50 flex items-center justify-center">
+                                <BarChart3 size={32} className="opacity-20" />
+                            </div>
+                            <p className="text-sm font-medium">No activity data available yet</p>
+                        </div>
+                    )}
+                </div>
             </div>
 
             {/* Refresh Button */}
-            <div className="mt-6 flex justify-center">
+            <div className="flex justify-center">
                 <button
                     onClick={() => {
                         setIsLoading(true);
                         fetchAnalytics(token);
                     }}
-                    className="px-6 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-white transition-all flex items-center gap-2"
+                    className="group px-8 py-3 rounded-2xl bg-[#1e293b] hover:bg-slate-800 text-white font-semibold transition-all flex items-center gap-3 border border-slate-800 hover:border-slate-700 shadow-lg"
                 >
-                    🔄 Refresh Data
+                    <RefreshCw className="group-hover:rotate-180 transition-transform duration-700 text-purple-400" size={20} />
+                    Refresh Analytics Data
                 </button>
             </div>
         </div>

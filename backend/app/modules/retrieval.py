@@ -12,6 +12,7 @@ from rank_bm25 import BM25Okapi
 from app.config import get_settings
 from app.modules.embedding import embedding_generator
 from app.modules.vector_store import vector_store
+from app.modules.query_expansion import query_expander
 from app.utils.logger import logger
 
 settings = get_settings()
@@ -26,6 +27,7 @@ class RetrievalResult:
     source_filename: str
     chunk_index: int
     relevance_score: float
+    page_label: Optional[str] = "1"
     
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -34,7 +36,8 @@ class RetrievalResult:
             "document_version": self.document_version,
             "source_filename": self.source_filename,
             "chunk_index": self.chunk_index,
-            "relevance_score": self.relevance_score
+            "relevance_score": self.relevance_score,
+            "page_label": self.page_label
         }
 
 
@@ -89,49 +92,67 @@ class Retriever:
         
         logger.info(f"Retrieving for query: '{query[:50]}...' (tenant: {tenant_id})")
         
-        # Generate query embedding
-        query_embedding = embedding_generator.embed_query(query)
+        # Determine queries to search
+        queries_to_search = [query]
+        if settings.use_query_expansion:
+            expanded = query_expander.generate_variations(query)
+            # Ensure unique and contains original
+            unique_queries = {query.lower()}
+            for q in expanded:
+                unique_queries.add(q.lower())
+            queries_to_search = list(unique_queries)
+            logger.info(f"Using {len(queries_to_search)} queries due to expansion")
+
+        all_vector_results = []
         
-        # Vector similarity search
-        results = vector_store.query(
-            tenant_id=tenant_id,
-            query_embedding=query_embedding.tolist(),
-            top_k=k * 2 if use_hybrid else k  # Get more for hybrid reranking
-        )
-        
-        if not results["documents"] or not results["documents"][0]:
-            logger.info("No results found")
-            return []
-        
-        # Parse vector search results
-        vector_results = self._parse_results(results)
-        
-        if use_hybrid and vector_results:
-            # Apply hybrid BM25 reranking
-            vector_results = self._hybrid_rerank(
-                query,
-                vector_results,
-                hybrid_alpha,
-                k
+        for q in queries_to_search:
+            # Generate query embedding
+            query_embedding = embedding_generator.embed_query(q)
+            
+            # Vector similarity search
+            results = vector_store.query(
+                tenant_id=tenant_id,
+                query_embedding=query_embedding.tolist(),
+                top_k=k * 2 if use_hybrid else k
             )
+            
+            if results["documents"] and results["documents"][0]:
+                vector_results = self._parse_results(results)
+                
+                if use_hybrid:
+                    vector_results = self._hybrid_rerank(q, vector_results, hybrid_alpha, k)
+                    
+                all_vector_results.extend(vector_results)
+
+        if not all_vector_results:
+            logger.info("No results found across all queries")
+            return []
+
+        # Deduplicate results by content (or better, by document_id + chunk_index)
+        # We'll use a dict to keep the highest score for each unique chunk
+        seen_chunks = {}
+        for res in all_vector_results:
+            chunk_key = f"{res.document_id}_{res.document_version}_{res.chunk_index}"
+            if chunk_key not in seen_chunks or res.relevance_score > seen_chunks[chunk_key].relevance_score:
+                seen_chunks[chunk_key] = res
         
-        # Log scores for debugging
-        if vector_results:
-            scores = [r.relevance_score for r in vector_results]
-            logger.info(f"Raw scores: {scores}, Threshold: {threshold}")
+        final_list = list(seen_chunks.values())
+        
+        # Sort by relevance
+        final_list.sort(key=lambda x: x.relevance_score, reverse=True)
         
         # Filter by relevance threshold
         filtered = [
-            r for r in vector_results
+            r for r in final_list
             if r.relevance_score >= threshold
         ]
         
-        logger.info(f"Before filter: {len(vector_results)}, After filter: {len(filtered)}")
+        logger.info(f"Merged results: {len(final_list)}, After threshold ({threshold}): {len(filtered)}")
         
         # Limit to top_k
         final_results = filtered[:k]
         
-        logger.info(f"Retrieved {len(final_results)} relevant chunks")
+        logger.info(f"Retrieved {len(final_results)} final relevant chunks")
         
         return final_results
     
@@ -155,7 +176,8 @@ class Retriever:
                 document_version=meta["document_version"],
                 source_filename=meta["source_filename"],
                 chunk_index=meta["chunk_index"],
-                relevance_score=float(similarity)
+                relevance_score=float(similarity),
+                page_label=meta.get("page_label", "1")
             ))
         
         return parsed

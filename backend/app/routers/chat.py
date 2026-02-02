@@ -8,10 +8,13 @@ import time
 import uuid
 from typing import Optional, List
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.responses import StreamingResponse
+import os
+import shutil
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, BackgroundTasks
+from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, desc
+from pathlib import Path
 
 from app.database import get_db
 from app.models.document import TenantSettings, ChatSession, ChatMessage, Admin
@@ -31,8 +34,13 @@ from app.modules.retrieval import retriever
 from app.modules.prompt import prompt_assembler
 from app.modules.llm import llm_generator
 from app.modules.local_llm import local_llm_generator
+from app.modules.suggestions import generate_suggestions
 from app.utils.logger import logger
 from app.auth.dependencies import get_current_admin
+from app.config import get_settings
+
+settings = get_settings()
+ALLOWED_EXTENSIONS = {".pdf", ".docx", ".txt", ".xlsx"}
 
 router = APIRouter(prefix="/chat", tags=["Chat"])
 
@@ -129,6 +137,29 @@ async def generate_response(
     return response_text, retrieved, model_used
 
 
+async def generate_session_title(question: str, answer: str) -> str:
+    """Generate a short, descriptive title for a chat session."""
+    try:
+        prompt = f"""Based on this first interaction, generate a very short title (max 4 words) for the conversation.
+User: "{question}"
+AI: "{answer[:200]}..."
+
+Title:"""
+        response = llm_generator.generate(
+            messages=[
+                {"role": "system", "content": "You are a concise title generator. Output ONLY the title."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.5,
+            max_tokens=20
+        )
+        title = response["content"].strip().strip('"').strip("'")
+        return title[:50]  # Limit length
+    except Exception as e:
+        logger.error(f"Failed to generate title: {e}")
+        return question[:30] + "..." if len(question) > 30 else question
+
+
 # ============================================================================
 # Public Chat Endpoints (No Auth Required)
 # ============================================================================
@@ -213,12 +244,17 @@ async def public_chat(
         )
         db.add(user_msg)
         db.add(assistant_msg)
+        
+        # Auto-rename session if it has default title
+        if session.title == "New Conversation" or session.title == "New Chat":
+            new_title = await generate_session_title(request.question, response_text)
+            session.title = new_title
+            
         await db.commit()
         
         # Calculate processing time
         total_time = (time.time() - start_time) * 1000
         
-        # Format response
         chunks_response = [
             RetrievedChunk(
                 content=chunk.content[:500] + "..." if len(chunk.content) > 500 else chunk.content,
@@ -226,17 +262,26 @@ async def public_chat(
                 document_version=chunk.document_version,
                 source_filename=chunk.source_filename,
                 chunk_index=chunk.chunk_index,
-                relevance_score=round(chunk.relevance_score, 4)
+                relevance_score=round(chunk.relevance_score, 4),
+                page_label=chunk.page_label
             )
             for chunk in retrieved
         ]
+        
+        # Step 4: Generate suggested follow-up questions
+        suggestions = generate_suggestions(
+            question=request.question,
+            answer=response_text,
+            context_snippets=[c.content for c in retrieved] if retrieved else []
+        )
         
         return ChatResponse(
             answer=response_text,
             session_id=session_id,
             retrieved_chunks=chunks_response,
             model_used=model_used,
-            processing_time_ms=round(total_time, 2)
+            processing_time_ms=round(total_time, 2),
+            suggestions=suggestions
         )
         
     except HTTPException:
@@ -247,6 +292,130 @@ async def public_chat(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to generate response: {str(e)}"
         )
+
+
+@router.post("/upload")
+async def public_upload_document(
+    tenant_id: str,
+    background_tasks: BackgroundTasks,
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Public upload endpoint for the chat page.
+    Allows users to add documents to a bot's knowledge base.
+    """
+    from app.models.document import Document, DocumentStatus, Admin
+    from app.routers.admin import process_document
+    
+    # Validate file extension
+    filename = file.filename
+    file_ext = Path(filename).suffix.lower()
+    
+    if file_ext not in ALLOWED_EXTENSIONS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"File type {file_ext} not supported. Allowed: {', '.join(ALLOWED_EXTENSIONS)}"
+        )
+    
+    # Ensure tenant exists and find an admin to attribute this to
+    admin_result = await db.execute(
+        select(Admin).where(Admin.tenant_id == tenant_id)
+    )
+    admin = admin_result.scalar_one_or_none()
+    
+    if not admin:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Tenant not found: {tenant_id}"
+        )
+    
+    # Generate unique filename
+    unique_filename = f"{uuid.uuid4()}{file_ext}"
+    file_path = os.path.join(settings.upload_dir, unique_filename)
+    
+    # Ensure upload directory exists
+    Path(settings.upload_dir).mkdir(parents=True, exist_ok=True)
+    
+    # Save file
+    try:
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+    except Exception as e:
+        logger.error(f"Failed to save file: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to save file: {str(e)}"
+        )
+    
+    # Create document record
+    document = Document(
+        tenant_id=tenant_id,
+        filename=unique_filename,
+        original_filename=filename,
+        file_type=file_ext[1:],
+        file_size=os.path.getsize(file_path),
+        file_path=file_path,
+        uploaded_by_id=admin.id,
+        status=DocumentStatus.PENDING
+    )
+    
+    db.add(document)
+    await db.commit()
+    await db.refresh(document)
+    
+    # Start background processing
+    background_tasks.add_task(
+        process_document,
+        str(document.id),
+        file_path,
+        tenant_id,
+        document.version,
+        filename,
+        settings.database_url
+    )
+    
+    logger.info(f"Public upload: Document {document.id} uploaded for tenant {tenant_id}")
+    
+    return {
+        "id": str(document.id),
+        "filename": filename,
+        "status": "processing",
+        "message": "File uploaded and processing started"
+    }
+
+
+@router.get("/view-doc/{document_id}")
+async def view_document(
+    document_id: str,
+    db: AsyncSession = Depends(get_db)
+):
+    """Proxy endpoint to view a document by ID, mapping it to the UUID filename on disk."""
+    from app.models.document import Document
+    
+    result = await db.execute(
+        select(Document).where(Document.id == document_id)
+    )
+    document = result.scalar_one_or_none()
+    
+    if not document:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Document not found"
+        )
+    
+    file_path = document.file_path
+    if not os.path.exists(file_path):
+        logger.error(f"File not found on disk: {file_path}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="File not found on disk"
+        )
+        
+    return FileResponse(
+        path=file_path,
+        media_type="application/pdf" if document.file_type == "pdf" else "application/octet-stream"
+    )
 
 
 # ============================================================================

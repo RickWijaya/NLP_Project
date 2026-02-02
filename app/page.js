@@ -1,12 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 // Backend API URL
-const API_URL = 'http://localhost:8000';
+const API_URL = 'http://127.0.0.1:8000';
 
 export default function Home() {
   const router = useRouter();
@@ -26,7 +26,6 @@ export default function Home() {
     }
 
     setIsLoading(true);
-
     try {
       const response = await fetch(`${API_URL}/auth/login`, {
         method: 'POST',
@@ -43,7 +42,7 @@ export default function Home() {
         throw new Error(data.detail || 'Login failed');
       }
 
-      // Save token and user info to localStorage
+      // Save token and user info to localStorage (using faris branch convention)
       localStorage.setItem('token', data.access_token);
       localStorage.setItem('username', username);
       localStorage.setItem('tenant_id', data.tenant_id || 'default_tenant');
@@ -87,15 +86,14 @@ export default function Home() {
           </h1>
         </div>
 
-        {/* Error Message */}
-        {error && (
-          <div className="w-full p-3 rounded-lg text-center" style={{ backgroundColor: 'rgba(239, 68, 68, 0.2)', border: '1px solid #ef4444', color: '#ef4444' }}>
-            {error}
-          </div>
-        )}
-
         {/* Form */}
         <form onSubmit={handleSubmit} className="flex flex-col items-start gap-[20px] w-full">
+          {error && (
+            <div className="w-full p-3 rounded-[8px] text-[14px] bg-[#EF44441A] border border-[#EF444433] text-[#EF4444]" style={{ fontFamily: 'var(--font-family-poppins)' }}>
+              {error}
+            </div>
+          )}
+
           {/* Username */}
           <div className="flex flex-col items-start gap-[8px] w-full">
             <label htmlFor="username" className="font-normal text-[16px] leading-[24px]" style={{ fontFamily: 'var(--font-family-poppins)', color: 'var(--color-text-primary)' }}>
@@ -106,8 +104,9 @@ export default function Home() {
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder=""
-              className="w-full h-[48px] px-5 rounded-[8px] text-[15px] leading-[22px] focus:outline-none focus:ring-2 transition-all"
+              placeholder="Enter username"
+              className="w-full h-[48px] px-5 rounded-[8px] text-[15px] leading-[22px] focus:outline-none focus:ring-2 transition-all disabled:opacity-50"
+              disabled={isLoading}
               style={{
                 backgroundColor: 'var(--color-bg-card)',
                 border: '1px solid var(--color-border-slate)',
@@ -128,8 +127,9 @@ export default function Home() {
                 type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder=""
-                className="w-full h-[48px] px-5 pr-12 rounded-[8px] text-[15px] leading-[22px] focus:outline-none focus:ring-2 transition-all"
+                placeholder="Enter password"
+                className="w-full h-[48px] px-5 pr-12 rounded-[8px] text-[15px] leading-[22px] focus:outline-none focus:ring-2 transition-all disabled:opacity-50"
+                disabled={isLoading}
                 style={{
                   backgroundColor: 'var(--color-bg-card)',
                   border: '1px solid var(--color-border-slate)',
@@ -140,7 +140,8 @@ export default function Home() {
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 transition-colors"
+                className="absolute right-4 top-1/2 -translate-y-1/2 transition-colors disabled:opacity-50"
+                disabled={isLoading}
                 style={{ color: 'var(--color-text-secondary)' }}
                 aria-label="Toggle password visibility"
               >
@@ -163,14 +164,22 @@ export default function Home() {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full h-[50px] rounded-[8px] font-bold text-[18px] leading-[27px] text-center border-none cursor-pointer hover:opacity-90 transition-all duration-300 mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full h-[50px] rounded-[8px] font-bold text-[18px] leading-[27px] text-center border-none cursor-pointer hover:opacity-90 transition-all duration-300 mt-2 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             style={{
               backgroundColor: 'var(--color-button-primary)',
               fontFamily: 'var(--font-family-poppins)',
               color: 'var(--color-text-primary)'
             }}
           >
-            {isLoading ? 'Logging in...' : 'Login'}
+            {isLoading ? (
+              <>
+                <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Logging in...
+              </>
+            ) : 'Login'}
           </button>
         </form>
 

@@ -6,7 +6,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 
 // Backend API URL
-const API_URL = 'http://localhost:8000';
+const API_URL = 'http://127.0.0.1:8000';
 
 export default function RegisterPage() {
     const router = useRouter();
