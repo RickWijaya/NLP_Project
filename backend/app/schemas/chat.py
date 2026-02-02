@@ -31,6 +31,7 @@ class RetrievedChunk(BaseModel):
     source_filename: str
     chunk_index: int
     relevance_score: float
+    page_label: Optional[str] = "1"
 
 
 class ChatResponse(BaseModel):
@@ -40,6 +41,7 @@ class ChatResponse(BaseModel):
     retrieved_chunks: List[RetrievedChunk]
     model_used: str
     processing_time_ms: float
+    suggestions: List[str] = []
 
 
 class ChatStreamResponse(BaseModel):

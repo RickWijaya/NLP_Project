@@ -37,9 +37,28 @@ class TenantSettingsBase(BaseModel):
     relevance_threshold: float = Field(0.1, ge=0.0, le=1.0)
 
 
-class TenantSettingsUpdate(TenantSettingsBase):
-    """Schema for updating tenant settings."""
-    pass
+class TenantSettingsUpdate(BaseModel):
+    """Schema for updating tenant settings. All fields optional for partial updates."""
+    # Model Selection
+    model_type: Optional[ModelTypeEnum] = None
+    api_model: Optional[str] = None
+    local_model: Optional[str] = None
+    
+    # Generation Parameters
+    temperature: Optional[float] = Field(None, ge=0.0, le=2.0)
+    max_new_tokens: Optional[int] = Field(None, ge=64, le=4096)
+    top_p: Optional[float] = Field(None, ge=0.0, le=1.0)
+    top_k: Optional[int] = Field(None, ge=1, le=100)
+    min_p: Optional[float] = Field(None, ge=0.0, le=1.0)
+    repetition_penalty: Optional[float] = Field(None, ge=1.0, le=2.0)
+    
+    # Prompt Customization
+    system_prompt: Optional[str] = None
+    no_context_prompt: Optional[str] = None
+    
+    # Retrieval Settings
+    top_k_chunks: Optional[int] = Field(None, ge=1, le=20)
+    relevance_threshold: Optional[float] = Field(None, ge=0.0, le=1.0)
 
 
 class TenantSettingsResponse(TenantSettingsBase):

@@ -6,7 +6,7 @@ Supports PDF, DOCX, TXT, and XLSX files.
 import os
 import re
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List
 
 import pdfplumber
 from docx import Document
@@ -53,75 +53,81 @@ class TextExtractor:
         
         try:
             if extension == ".pdf":
-                text = self._extract_pdf(file_path)
+                segments = self._extract_pdf(file_path)
             elif extension == ".docx":
-                text = self._extract_docx(file_path)
+                segments = [{"content": self._extract_docx(file_path), "page_label": "1"}]
             elif extension == ".txt":
-                text = self._extract_txt(file_path)
+                segments = [{"content": self._extract_txt(file_path), "page_label": "1"}]
             elif extension == ".xlsx":
-                text = self._extract_xlsx(file_path)
+                segments = [{"content": self._extract_xlsx(file_path), "page_label": "1"}]
             else:
                 raise ValueError(f"Unsupported file type: {extension}")
             
-            # Clean up the text
-            text = self._clean_text(text)
+            # Clean up the text in each segment
+            for seg in segments:
+                seg["content"] = self._clean_text(seg["content"])
             
+            # Filter out empty segments
+            segments = [s for s in segments if s["content"].strip()]
+            
+            total_chars = sum(len(s["content"]) for s in segments)
             log_processing_step(
                 document_id, 
                 "extraction", 
                 "completed", 
-                f"Extracted {len(text)} characters"
+                f"Extracted {total_chars} characters across {len(segments)} segments"
             )
             
-            return text
+            return segments
             
         except Exception as e:
             log_processing_step(document_id, "extraction", "failed", str(e))
             raise
     
-    def _extract_pdf(self, file_path: str) -> str:
+    def _extract_pdf(self, file_path: str) -> List[dict]:
         """
-        Extract text from PDF file using pdfplumber.
-        Handles two-column layouts better than pypdf.
+        Extract text from PDF file using pdfplumber, preserved per page.
         """
-        text_parts = []
+        segments = []
         
         try:
             with pdfplumber.open(file_path) as pdf:
                 for page_num, page in enumerate(pdf.pages):
                     # Extract text with better layout handling
                     page_text = page.extract_text(
-                        layout=True,  # Preserve layout for multi-column
+                        layout=True,
                         x_tolerance=3,
                         y_tolerance=3
                     )
                     
                     if page_text:
-                        # Clean up excessive whitespace from layout mode
+                        # Clean up layout artifacts
                         lines = page_text.split('\n')
-                        cleaned_lines = []
-                        for line in lines:
-                            # Remove excessive spaces while preserving structure
-                            cleaned = re.sub(r'\s{3,}', '  ', line.strip())
-                            if cleaned:
-                                cleaned_lines.append(cleaned)
+                        cleaned_lines = [re.sub(r'\s{3,}', '  ', line.strip()) for line in lines if line.strip()]
+                        content = '\n'.join(cleaned_lines)
                         
-                        text_parts.append('\n'.join(cleaned_lines))
-                        
+                        if content:
+                            segments.append({
+                                "content": content,
+                                "page_label": str(page_num + 1)
+                            })
+                            
         except Exception as e:
             logger.warning(f"pdfplumber failed, trying fallback: {e}")
-            # Fallback to basic extraction if layout mode fails
             try:
                 with pdfplumber.open(file_path) as pdf:
-                    for page in pdf.pages:
+                    for page_num, page in enumerate(pdf.pages):
                         page_text = page.extract_text()
                         if page_text:
-                            text_parts.append(page_text)
+                            segments.append({
+                                "content": page_text,
+                                "page_label": str(page_num + 1)
+                            })
             except Exception as e2:
                 logger.error(f"PDF extraction failed: {e2}")
                 raise
         
-        return "\n\n".join(text_parts)
+        return segments
     
     def _extract_docx(self, file_path: str) -> str:
         """Extract text from DOCX file."""

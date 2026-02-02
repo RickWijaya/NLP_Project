@@ -7,10 +7,19 @@ Built with modern **Next.js App Router**, designed for scalable chatbot experien
 
 ## 🚀 Tech Stack
 
-- **Next.js** — Latest (App Router)
-- **Tailwind CSS** — v4.1
+- **Frontend:** Next.js (App Router), Tailwind CSS
+- **Backend:** FastAPI (Python), PostgreSQL, ChromaDB
 
 ---
+
+## 📂 Project Structure
+
+This repository contains both Frontend and Backend:
+
+- `app/` - Next.js Frontend
+- `backend/` - FastAPI RAG Service
+
+See [backend/README.md](./backend/README.md) for detailed backend documentation.
 
 ## 📁 Project Structure
 

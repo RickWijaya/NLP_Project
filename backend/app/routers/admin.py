@@ -6,16 +6,16 @@ Handles document upload, update, delete, and status tracking.
 import os
 import uuid
 import shutil
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, desc
 
 from app.database import get_db
-from app.models.document import Document, Admin, DocumentStatus, ProcessingLog
+from app.models.document import Document, Admin, DocumentStatus, ProcessingLog, ChatMessage, ChatSession
 from app.schemas.document import (
     DocumentResponse, 
     DocumentListResponse, 
@@ -83,7 +83,7 @@ async def process_document(
             await _log_step(db, document_id, "extraction", "started")
             try:
                 raw_text = text_extractor.extract(file_path, document_id)
-                await _log_step(db, document_id, "extraction", "completed", f"Extracted {len(raw_text)} chars")
+                await _log_step(db, document_id, "extraction", "completed", f"Extracted {len(raw_text)} segments/pages")
             except Exception as e:
                 await _log_step(db, document_id, "extraction", "failed", str(e))
                 raise
@@ -512,6 +512,35 @@ async def get_stats(
     )
     total_chunks = chunks_result.scalar() or 0
     
+    # Message traffic last 7 days
+    seven_days_ago = datetime.utcnow() - timedelta(days=7)
+    traffic_result = await db.execute(
+        select(
+            func.date(ChatMessage.created_at).label("day"),
+            func.count(ChatMessage.id).label("count")
+        )
+        .join(ChatSession)
+        .where(
+            ChatSession.tenant_id == admin.tenant_id,
+            ChatMessage.created_at >= seven_days_ago
+        )
+        .group_by(func.date(ChatMessage.created_at))
+        .order_by(func.date(ChatMessage.created_at))
+    )
+    traffic_rows = traffic_result.all()
+    
+    # Format traffic data for frontend (fill in missing days)
+    traffic_data = []
+    traffic_dict = {str(row.day): row.count for row in traffic_rows}
+    
+    for i in range(7, -1, -1):
+        day = (datetime.utcnow() - timedelta(days=i)).date()
+        day_str = str(day)
+        traffic_data.append({
+            "date": day.strftime("%b %d"),
+            "messages": traffic_dict.get(day_str, 0)
+        })
+    
     # Vector store stats
     try:
         vector_stats = vector_store.get_collection_stats(admin.tenant_id)
@@ -522,6 +551,7 @@ async def get_stats(
         "tenant_id": admin.tenant_id,
         "document_counts": status_counts,
         "total_chunks": total_chunks,
+        "traffic": traffic_data,
         "vector_store": vector_stats
     }
 
@@ -591,7 +621,8 @@ async def update_tenant_settings(
     update_data = settings_update.model_dump(exclude_unset=True)
     for key, value in update_data.items():
         if key == "model_type" and value:
-            setattr(settings, key, ModelType(value))
+            # model_type column is String, not Enum
+            setattr(settings, key, value.value if hasattr(value, 'value') else str(value))
         elif value is not None:
             setattr(settings, key, value)
     

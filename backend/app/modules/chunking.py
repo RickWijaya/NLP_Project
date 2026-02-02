@@ -4,7 +4,7 @@ Chunks text into segments optimized for semantic retrieval.
 """
 
 import re
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from dataclasses import dataclass, asdict
 
 from app.config import get_settings
@@ -32,6 +32,7 @@ class Chunk:
     source_filename: str
     chunk_index: int
     token_count: int
+    page_label: Optional[str] = "1"
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert chunk to dictionary."""
@@ -63,61 +64,74 @@ class TextChunker:
     
     def chunk(
         self,
-        text: str,
+        segments: List[Dict[str, Any]],
         document_id: str,
         document_version: int,
         source_filename: str
     ) -> List[Chunk]:
         """
-        Split text into chunks with metadata.
+        Split text segments into chunks with metadata.
         
         Args:
-            text: Input text to chunk
+            segments: List of extracted segments with content and page_label
             document_id: ID of the source document
             document_version: Version of the source document
             source_filename: Original filename
             
         Returns:
-            List of Chunk objects with metadata
+            List of Chunk objects with page-specific metadata
         """
-        if not text or not text.strip():
+        if not segments:
             return []
         
         log_processing_step(str(document_id), "chunking", "started")
         
         try:
-            # Split into paragraphs first
-            paragraphs = self._split_paragraphs(text)
+            all_chunks = []
+            chunk_global_index = 0
             
-            # Split paragraphs into sentences
-            all_sentences = []
-            for para in paragraphs:
-                sentences = simple_sent_tokenize(para)
-                all_sentences.extend(sentences)
-                # Add paragraph break marker
-                if sentences:
-                    all_sentences.append("")  # Empty string as paragraph marker
-            
-            # Remove trailing empty marker
-            while all_sentences and not all_sentences[-1]:
-                all_sentences.pop()
-            
-            # Create chunks from sentences
-            chunks = self._create_chunks(
-                all_sentences,
-                document_id,
-                document_version,
-                source_filename
-            )
+            for seg in segments:
+                text = seg["content"]
+                page_label = seg.get("page_label", "1")
+                
+                # Split into paragraphs first
+                paragraphs = self._split_paragraphs(text)
+                
+                # Split paragraphs into sentences
+                all_sentences = []
+                for para in paragraphs:
+                    sentences = simple_sent_tokenize(para)
+                    all_sentences.extend(sentences)
+                    if sentences:
+                        all_sentences.append("")  # Paragraph marker
+                
+                while all_sentences and not all_sentences[-1]:
+                    all_sentences.pop()
+                
+                if not all_sentences:
+                    continue
+                    
+                # Create chunks from sentences for THIS page
+                page_chunks = self._create_chunks(
+                    all_sentences,
+                    document_id,
+                    document_version,
+                    source_filename,
+                    chunk_global_index,
+                    page_label
+                )
+                
+                all_chunks.extend(page_chunks)
+                chunk_global_index += len(page_chunks)
             
             log_processing_step(
                 str(document_id),
                 "chunking",
                 "completed",
-                f"Created {len(chunks)} chunks"
+                f"Created {len(all_chunks)} chunks across {len(segments)} segments"
             )
             
-            return chunks
+            return all_chunks
             
         except Exception as e:
             log_processing_step(str(document_id), "chunking", "failed", str(e))
@@ -140,13 +154,15 @@ class TextChunker:
         sentences: List[str],
         document_id: str,
         document_version: int,
-        source_filename: str
+        source_filename: str,
+        start_index: int = 0,
+        page_label: str = "1"
     ) -> List[Chunk]:
         """Create chunks from sentences with overlap."""
         chunks = []
         current_chunk_sentences = []
         current_token_count = 0
-        chunk_index = 0
+        chunk_offset = 0
         
         sentence_idx = 0
         while sentence_idx < len(sentences):
@@ -168,10 +184,11 @@ class TextChunker:
                     document_id=str(document_id),
                     document_version=document_version,
                     source_filename=source_filename,
-                    chunk_index=chunk_index,
-                    token_count=current_token_count
+                    chunk_index=start_index + chunk_offset,
+                    token_count=current_token_count,
+                    page_label=page_label
                 ))
-                chunk_index += 1
+                chunk_offset += 1
                 
                 # Calculate overlap - keep last few sentences
                 overlap_sentences = []
@@ -202,8 +219,9 @@ class TextChunker:
                 document_id=str(document_id),
                 document_version=document_version,
                 source_filename=source_filename,
-                chunk_index=chunk_index,
-                token_count=current_token_count
+                chunk_index=start_index + chunk_offset,
+                token_count=current_token_count,
+                page_label=page_label
             ))
         
         return chunks

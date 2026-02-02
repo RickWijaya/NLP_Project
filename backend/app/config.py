@@ -38,7 +38,9 @@ class Settings(BaseSettings):
     
     # Retrieval Configuration
     top_k: int = 5  # Number of chunks to retrieve
-    relevance_threshold: float = 0.1  # Minimum similarity score (lowered for better recall)
+    relevance_threshold: float = 0.1  # Minimum similarity score
+    use_query_expansion: bool = True
+    expansion_count: int = 3
     
     # LLM Configuration
     llm_model: str = "llama-3.3-70b-versatile"

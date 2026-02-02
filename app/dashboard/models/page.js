@@ -1,107 +1,145 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 
+const API_URL = 'http://127.0.0.1:8000';
+
 export default function ModelsPage() {
-    const [searchQuery, setSearchQuery] = useState('');
-    const [currentPage, setCurrentPage] = useState(1); 
-    const [showModal, setShowModal] = useState(false); // State for modal visibility
-    const [modelToDelete, setModelToDelete] = useState(null); // State to hold the model that will be deleted
-    const modelsPerPage = 5;
+    const router = useRouter();
+    const [username, setUsername] = useState('Admin');
+    const [loading, setLoading] = useState(true);
+    const [apiModels, setApiModels] = useState([]);
+    const [localModels, setLocalModels] = useState([]);
+    const [currentSettings, setCurrentSettings] = useState(null);
+    const [activeTab, setActiveTab] = useState('api');
+    const [error, setError] = useState('');
+    const [success, setSuccess] = useState('');
+    const [token, setToken] = useState('');
 
-    const models = [
-        { id: 1, name: 'User1', key: 'AI1', model: 'Grok', status: 'active' },
-        { id: 2, name: 'User2', key: 'AI2', model: 'Local', status: 'inactive' },
-        { id: 3, name: 'User3', key: 'AI3', model: 'Grok', status: 'active' },
-        { id: 4, name: 'User4', key: 'AI4', model: 'Local', status: 'inactive' },
-        { id: 5, name: 'User5', key: 'AI5', model: 'Grok', status: 'active' },
-        { id: 6, name: 'User6', key: 'AI6', model: 'Local', status: 'inactive' },
-        { id: 7, name: 'User7', key: 'AI7', model: 'Grok', status: 'active' },
-        { id: 8, name: 'User8', key: 'AI8', model: 'Local', status: 'inactive' },
-        { id: 9, name: 'User9', key: 'AI9', model: 'Grok', status: 'active' },
-        { id: 10, name: 'User10', key: 'AI10', model: 'Local', status: 'inactive' },
-    ];
+    useEffect(() => {
+        const storedToken = localStorage.getItem('token');
+        const storedUsername = localStorage.getItem('username');
 
-    const indexOfLastModel = currentPage * modelsPerPage;
-    const indexOfFirstModel = indexOfLastModel - modelsPerPage;
-    const currentModels = models.slice(indexOfFirstModel, indexOfLastModel);
-    const totalPages = Math.ceil(models.length / modelsPerPage);
+        if (!storedToken) {
+            router.push('/');
+            return;
+        }
 
-    const handleNextPage = () => {
-        if (currentPage < totalPages) {
-            setCurrentPage(prevPage => prevPage + 1);
+        setToken(storedToken);
+        setUsername(storedUsername || 'Admin');
+        fetchModels(storedToken);
+        fetchCurrentSettings(storedToken);
+    }, [router]);
+
+    const fetchModels = async (authToken) => {
+        try {
+            const response = await fetch(`${API_URL}/admin/available-models`, {
+                headers: { 'Authorization': `Bearer ${authToken}` }
+            });
+            if (response.ok) {
+                const data = await response.json();
+                setApiModels(data.api_models || []);
+                setLocalModels(data.local_models || []);
+            } else {
+                const errorData = await response.json().catch(() => ({}));
+                console.error('Fetch models failed with status:', response.status, errorData);
+                setError(`Server returned ${response.status}: ${errorData.detail || 'Failed to load models'}`);
+            }
+        } catch (err) {
+            console.error('Failed to fetch models:', err);
+            setError('Failed to connect to server');
+        } finally {
+            setLoading(false);
         }
     };
 
-    const handlePreviousPage = () => {
-        if (currentPage > 1) {
-            setCurrentPage(prevPage => prevPage - 1);
+    const fetchCurrentSettings = async (authToken) => {
+        try {
+            const response = await fetch(`${API_URL}/admin/settings`, {
+                headers: { 'Authorization': `Bearer ${authToken}` }
+            });
+            if (response.ok) {
+                const data = await response.json();
+                setCurrentSettings(data);
+            }
+        } catch (err) {
+            console.error('Failed to fetch settings:', err);
         }
     };
 
-    const handlePageChange = (pageNumber) => {
-        setCurrentPage(pageNumber);
+    const handleSelectModel = async (modelKey, modelType) => {
+        setError('');
+        setSuccess('');
+
+        try {
+            const response = await fetch(`${API_URL}/admin/settings`, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    model_type: modelType,
+                    api_model_name: modelType === 'api' ? modelKey : currentSettings?.api_model_name,
+                    local_model_name: modelType === 'local' ? modelKey : currentSettings?.local_model_name
+                })
+            });
+
+            if (response.ok) {
+                setSuccess(`Successfully switched to ${modelKey}!`);
+                await fetchCurrentSettings(token);
+                setTimeout(() => setSuccess(''), 3000);
+            } else {
+                const data = await response.json();
+                throw new Error(data.detail || 'Failed to update model');
+            }
+        } catch (err) {
+            setError(err.message);
+        }
     };
 
-    const handleDeleteClick = (model) => {
-        setModelToDelete(model); // Set the model to be deleted
-        setShowModal(true); // Show the confirmation modal
+    const handleLogout = () => {
+        localStorage.removeItem('token');
+        localStorage.removeItem('username');
+        localStorage.removeItem('tenant_id');
+        router.push('/');
     };
 
-    const handleConfirmDelete = () => {
-        // Here, you would call the function to delete the model
-        console.log(`Model ${modelToDelete.name} deleted`);
-        setShowModal(false); // Close the modal after deletion
-    };
-
-    const handleCancelDelete = () => {
-        setShowModal(false); // Just close the modal without doing anything
+    const isCurrentModel = (modelKey, modelType) => {
+        if (!currentSettings) return false;
+        if (currentSettings.model_type !== modelType) return false;
+        if (modelType === 'api') return currentSettings.api_model_name === modelKey;
+        if (modelType === 'local') return currentSettings.local_model_name === modelKey;
+        return false;
     };
 
     return (
-        <>
+        <div className="w-full">
             {/* Header Bar */}
             <div className="w-full" style={{ backgroundColor: 'var(--color-bg-card)', boxShadow: 'var(--shadow-cyan-glow)' }}>
-                <div className="flex flex-row justify-between items-center p-[10px_20px] gap-6 w-full h-[66px]">
-                    <div className="flex flex-row items-start p-[10px_20px] gap-[10px] h-[46px]">
-                        <Link href="/dashboard" className="w-7 h-7 flex items-center justify-center text-[#E5E7EB] hover:opacity-80 transition-opacity">
-                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z" fill="currentColor" />
+                <div className="flex flex-row justify-between items-center p-[10px_30px] min-h-[66px]">
+                    <div className="flex items-center gap-3">
+                        <Link href="/dashboard" className="p-2 rounded-lg hover:bg-white/10 transition-all" style={{ color: 'var(--color-text-secondary)' }}>
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M15 18l-6-6 6-6" />
                             </svg>
                         </Link>
-                        <h1 className="font-medium text-[22px] leading-7 m-0" style={{ fontFamily: 'var(--font-family-poppins)', color: 'var(--color-text-primary)' }}>
-                            Manage Your Model
+                        <h1 className="font-semibold text-[22px] m-0" style={{ fontFamily: 'var(--font-family-poppins)', color: 'var(--color-text-primary)' }}>
+                            🤖 AI Models
                         </h1>
                     </div>
-
-                    <div className="flex flex-row items-center p-0 gap-4 h-[46px]">
+                    <div className="flex flex-row items-center gap-4">
                         <div className="flex flex-row items-center gap-3">
                             <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0">
-                                <Image
-                                    src="/kathy-avatar.png"
-                                    alt="Admin"
-                                    width={40}
-                                    height={40}
-                                    className="w-full h-full object-cover"
-                                />
+                                <Image src="/kathy-avatar.png" alt="Admin" width={40} height={40} className="w-full h-full object-cover" />
                             </div>
-                            <div className="flex flex-col items-start gap-[2px]">
-                                <p className="font-bold text-[16px] leading-[22px] tracking-[-0.007em] text-[#E5E7EB] m-0" style={{ fontFamily: 'var(--font-family-jakarta)' }}>
-                                    Admin
-                                </p>
-                                <p className="font-medium text-[14px] leading-5 tracking-[-0.006em] m-0" style={{ fontFamily: 'var(--font-family-jakarta)', color: 'var(--color-text-secondary)' }}>
-                                    Admin@gmail.com
-                                </p>
-                            </div>
+                            <p className="font-bold text-[16px] text-[#E5E7EB] m-0" style={{ fontFamily: 'var(--font-family-jakarta)' }}>{username}</p>
                         </div>
-                        <button
-                            className="flex justify-center items-center p-2 w-10 h-10 min-h-0 rounded-full bg-transparent border-none cursor-pointer hover:opacity-80 transition-all duration-300"
-                            style={{ color: 'var(--color-destructive)' }}
-                            aria-label="Logout"
-                        >
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <button onClick={handleLogout} className="p-2 rounded-lg border-none cursor-pointer hover:bg-white/10" style={{ backgroundColor: 'transparent', color: 'var(--color-destructive)' }}>
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
                                 <path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z" fill="currentColor" />
                             </svg>
                         </button>
@@ -110,216 +148,204 @@ export default function ModelsPage() {
             </div>
 
             {/* Main Content */}
-            <div className="flex-1 p-[30px]">
-                <div className="flex flex-col items-start p-[20px] gap-[15px] w-full max-w-[1080px] mx-auto rounded-[20px]" style={{ backgroundColor: 'var(--color-bg-card)' }}>
-                    <h2 className="font-bold text-[18px] leading-5 tracking-[-0.006em] text-white m-0" style={{ fontFamily: 'var(--font-family-poppins)' }}>Model</h2>
-                    {/* Header - Search + Add Button */}
-                    <div className="flex flex-row justify-between items-center p-0 gap-6 w-full h-10">
-                        {/* Search Input */}
-                        <div className="flex flex-col items-end p-0 gap-[6px] w-80 h-10">
-                            <div className="box-border flex flex-row items-center p-[8px_12px] gap-3 w-80 h-10 min-h-10 rounded-lg" style={{ backgroundColor: 'var(--color-bg-dark-primary)', border: '1px solid var(--color-border-slate)' }}>
-                                <div className="flex flex-row items-center p-0 gap-2 w-[264px] h-[22px] flex-1">
-                                    <input
-                                        type="text"
-                                        placeholder="Search Model"
-                                        value={searchQuery}
-                                        onChange={(e) => setSearchQuery(e.target.value)}
-                                        className="w-full h-[22px] bg-transparent border-none outline-none font-medium text-[16px] leading-[22px] tracking-[-0.007em]"
-                                        style={{ fontFamily: 'var(--font-family-jakarta)', color: 'var(--color-text-secondary)' }}
-                                    />
-                                </div>
-                                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" className="flex-shrink-0">
-                                    <path d="M9 17A8 8 0 1 0 9 1a8 8 0 0 0 0 16zM19 19l-4.35-4.35" stroke="#9CA3AF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                </svg>
+            <div className="p-8 max-w-5xl mx-auto">
+                {/* Current Model Info */}
+                {currentSettings && (
+                    <div className="mb-8 p-6 rounded-2xl" style={{ backgroundColor: 'var(--color-bg-card)', border: '2px solid var(--color-button-primary)' }}>
+                        <div className="flex items-center gap-4">
+                            <div className="w-14 h-14 rounded-xl flex items-center justify-center text-2xl" style={{ backgroundColor: 'rgba(34, 197, 94, 0.1)' }}>
+                                ✓
+                            </div>
+                            <div>
+                                <p className="text-sm m-0 mb-1" style={{ color: 'var(--color-text-secondary)' }}>Currently Active Model</p>
+                                <p className="text-xl font-bold text-white m-0">
+                                    {currentSettings.model_type === 'api' ? currentSettings.api_model_name : currentSettings.local_model_name}
+                                </p>
+                                <p className="text-sm m-0 mt-1" style={{ color: 'var(--color-button-primary)' }}>
+                                    {currentSettings.model_type === 'api' ? '☁️ Cloud API' : '💻 Local Model'}
+                                </p>
                             </div>
                         </div>
-
-                        {/* Add Model Button */}
-                        <Link href="/dashboard/models/add" className="flex flex-row justify-center items-center p-[10px_16px] gap-2 w-[134px] h-10 rounded-lg border-none cursor-pointer hover:opacity-90 transition-opacity no-underline" style={{ backgroundColor: 'var(--color-button-primary)', fontFamily: 'var(--font-family-jakarta)' }}>
-                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <circle cx="10" cy="10" r="9" stroke="white" strokeWidth="2" />
-                                <path d="M10 6v8M6 10h8" stroke="white" strokeWidth="2" strokeLinecap="round" />
-                            </svg>
-                            <span className="font-bold text-[14px] leading-5 tracking-[-0.006em] text-white">Add Model</span>
-                        </Link>
                     </div>
-                    {/* Table */}
-                    <div className="box-border flex flex-col items-start p-0 w-full rounded-xl overflow-hidden" style={{ backgroundColor: 'var(--color-bg-dark-primary)', border: '1px solid #D9DDE0' }}>
-                        <div className="flex flex-row items-start p-2 gap-2 w-full h-12">
-                            <div className="flex flex-col justify-center items-start p-0 gap-[10px] w-9 h-8">
-                                <span className="font-semibold text-[14px] leading-5 tracking-[-0.006em] text-[#E5E7EB]">No</span>
-                            </div>
-                            <div className="flex flex-col justify-center items-start p-0 gap-[10px] w-[101px] h-8">
-                                <span className="font-semibold text-[14px] leading-5 tracking-[-0.006em] text-[#E5E7EB]">Nama Bot</span>
-                            </div>
-                            <div className="flex flex-col justify-center items-start p-0 gap-[10px] w-[252px] h-8">
-                                <span className="font-semibold text-[14px] leading-5 tracking-[-0.006em] text-[#E5E7EB]">Key</span>
-                            </div>
-                            <div className="flex flex-col justify-center items-start p-0 gap-[10px] w-[189px] h-8">
-                                <span className="font-semibold text-[14px] leading-5 tracking-[-0.006em] text-[#E5E7EB]">Model</span>
-                            </div>
-                            <div className="flex flex-col justify-center items-start p-0 gap-[10px] w-[243px] h-8">
-                                <span className="font-semibold text-[14px] leading-5 tracking-[-0.006em] text-[#E5E7EB]">Status</span>
-                            </div>
-                            <div className="flex flex-col justify-center items-start p-0 gap-[10px] w-[100px] h-8">
-                                <span className="font-semibold text-[14px] leading-5 tracking-[-0.006em] text-[#E5E7EB]">Aksi</span>
-                            </div>
-                        </div>
-                        <div className="w-full h-0 border-t" style={{ borderColor: '#D9DDE0' }}></div>
+                )}
 
-                        {/* Table Rows */}
-                        <div className="flex flex-col items-start p-0 w-full">
-                            {currentModels.map((model, index) => (
-                                <div key={model.id}>
-                                    <div className="flex flex-row items-start p-2 gap-2 w-full h-[52px]">
-                                        {/* No */}
-                                        <div className="flex flex-col items-start p-0 gap-[10px] w-9 h-9 self-stretch">
-                                            <div className="flex flex-row justify-center items-center p-[8px_4px] w-9 h-8 self-stretch">
-                                                <span className="font-medium text-[12px] leading-4 tracking-[-0.005em] text-[#E5E7EB]" style={{ fontFamily: 'var(--font-family-jakarta)' }}>{model.id}</span>
-                                            </div>
+                {/* Success/Error Messages */}
+                {success && (
+                    <div className="mb-6 p-4 rounded-xl" style={{ backgroundColor: 'rgba(34, 197, 94, 0.15)', border: '1px solid var(--color-button-primary)' }}>
+                        <p className="m-0" style={{ color: 'var(--color-button-primary)' }}>✓ {success}</p>
+                    </div>
+                )}
+                {error && (
+                    <div className="mb-6 p-4 rounded-xl" style={{ backgroundColor: 'rgba(239, 68, 68, 0.15)', border: '1px solid var(--color-destructive)' }}>
+                        <p className="m-0" style={{ color: 'var(--color-destructive)' }}>✕ {error}</p>
+                    </div>
+                )}
+
+                {/* Tabs */}
+                <div className="flex gap-2 mb-6">
+                    <button
+                        onClick={() => setActiveTab('api')}
+                        className="px-6 py-3 rounded-xl font-medium transition-all border-none cursor-pointer"
+                        style={{
+                            backgroundColor: activeTab === 'api' ? 'var(--color-button-primary)' : 'var(--color-bg-card)',
+                            color: activeTab === 'api' ? 'white' : 'var(--color-text-secondary)'
+                        }}
+                    >
+                        ☁️ API Models ({apiModels.length})
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('local')}
+                        className="px-6 py-3 rounded-xl font-medium transition-all border-none cursor-pointer"
+                        style={{
+                            backgroundColor: activeTab === 'local' ? 'var(--color-button-primary)' : 'var(--color-bg-card)',
+                            color: activeTab === 'local' ? 'white' : 'var(--color-text-secondary)'
+                        }}
+                    >
+                        💻 Local Models ({localModels.length})
+                    </button>
+                </div>
+
+                {/* Models Grid */}
+                {loading ? (
+                    <div className="flex items-center justify-center py-16">
+                        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2" style={{ borderColor: 'var(--color-button-primary)' }}></div>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {activeTab === 'api' ? (
+                            apiModels.length > 0 ? apiModels.map((model) => (
+                                <div
+                                    key={model.key}
+                                    className="p-5 rounded-xl transition-all hover:scale-[1.02]"
+                                    style={{
+                                        backgroundColor: 'var(--color-bg-card)',
+                                        border: isCurrentModel(model.key, 'api') ? '2px solid var(--color-button-primary)' : '1px solid var(--color-border-slate)'
+                                    }}
+                                >
+                                    <div className="flex justify-between items-start mb-3">
+                                        <div>
+                                            <h3 className="text-lg font-semibold text-white m-0" style={{ fontFamily: 'var(--font-family-poppins)' }}>
+                                                {model.name}
+                                            </h3>
+                                            <p className="text-sm m-0 mt-1" style={{ color: 'var(--color-text-secondary)' }}>
+                                                {model.description}
+                                            </p>
                                         </div>
-                                        {/* Name */}
-                                        <div className="flex flex-col items-start p-0 gap-[10px] w-[101px] h-9 self-stretch">
-                                            <div className="flex flex-row items-start p-[8px_4px] w-[101px] h-8 self-stretch">
-                                                <span className="font-medium text-[12px] leading-4 tracking-[-0.005em] text-[#E5E7EB]" style={{ fontFamily: 'var(--font-family-jakarta)' }}>{model.name}</span>
-                                            </div>
+                                        {isCurrentModel(model.key, 'api') && (
+                                            <span className="px-3 py-1 rounded-full text-xs font-medium" style={{ backgroundColor: 'rgba(34, 197, 94, 0.2)', color: '#22C55E' }}>
+                                                Active
+                                            </span>
+                                        )}
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                        <code className="text-xs px-2 py-1 rounded" style={{ backgroundColor: 'var(--color-bg-dark-primary)', color: 'var(--color-text-secondary)' }}>
+                                            {model.key}
+                                        </code>
+                                        {!isCurrentModel(model.key, 'api') && (
+                                            <button
+                                                onClick={() => handleSelectModel(model.key, 'api')}
+                                                className="px-4 py-2 rounded-lg border-none cursor-pointer transition-all hover:opacity-80"
+                                                style={{ backgroundColor: 'var(--color-button-primary)', color: 'white' }}
+                                            >
+                                                Use This Model
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            )) : (
+                                <div className="col-span-2 text-center py-12 rounded-xl" style={{ backgroundColor: 'var(--color-bg-card)', color: 'var(--color-text-secondary)' }}>
+                                    No API models available
+                                </div>
+                            )
+                        ) : (
+                            localModels.length > 0 ? localModels.map((model) => (
+                                <div
+                                    key={model.key}
+                                    className="p-5 rounded-xl transition-all hover:scale-[1.02]"
+                                    style={{
+                                        backgroundColor: 'var(--color-bg-card)',
+                                        border: isCurrentModel(model.key, 'local') ? '2px solid var(--color-button-primary)' : '1px solid var(--color-border-slate)'
+                                    }}
+                                >
+                                    <div className="flex justify-between items-start mb-3">
+                                        <div>
+                                            <h3 className="text-lg font-semibold text-white m-0" style={{ fontFamily: 'var(--font-family-poppins)' }}>
+                                                {model.name}
+                                            </h3>
+                                            <p className="text-sm m-0 mt-1" style={{ color: 'var(--color-text-secondary)' }}>
+                                                {model.description}
+                                            </p>
                                         </div>
-                                        {/* Key */}
-                                        <div className="flex flex-col items-start p-0 gap-[10px] w-[252px] h-9 self-stretch">
-                                            <div className="flex flex-row items-start p-[8px_4px] w-[91px] h-8">
-                                                <span className="font-medium text-[12px] leading-4 tracking-[-0.005em] text-[#E5E7EB]" style={{ fontFamily: 'var(--font-family-jakarta)' }}>{model.key}</span>
-                                            </div>
-                                        </div>
-                                        {/* Model */}
-                                        <div className="flex flex-col items-start p-0 gap-[10px] w-[189px] h-9 self-stretch">
-                                            <div className="flex flex-row items-start p-[8px_4px] w-[91px] h-8">
-                                                <span className="font-medium text-[12px] leading-4 tracking-[-0.005em] text-[#E5E7EB]" style={{ fontFamily: 'var(--font-family-jakarta)' }}>{model.model}</span>
-                                            </div>
-                                        </div>
-                                        {/* Status */}
-                                        <div className="flex flex-col items-start p-0 gap-[10px] w-[243px] h-9 self-stretch">
-                                            <div className="flex flex-row items-start p-[8px_4px] w-[243px] h-8 self-stretch">
-                                                <span
-                                                    className="font-medium text-[12px] leading-4 tracking-[-0.005em]"
-                                                    style={{
-                                                        fontFamily: 'var(--font-family-jakarta)',
-                                                        color: model.status === 'active' ? '#22C55E' : '#EF4444'
-                                                    }}
-                                                >
-                                                    {model.status === 'active' ? 'Aktif' : 'Non Aktif'}
+                                        <div className="flex items-center gap-2">
+                                            {model.is_downloaded && (
+                                                <span className="px-2 py-1 rounded text-xs" style={{ backgroundColor: 'rgba(59, 130, 246, 0.2)', color: '#3B82F6' }}>
+                                                    Downloaded
                                                 </span>
-                                            </div>
-                                        </div>
-                                        {/* Actions */}
-                                        <div className="flex flex-col items-start p-0 gap-[10px] w-10 h-9 self-stretch">
-                                            <div className="flex flex-row items-center p-[4px_0] gap-2 w-10 h-9">
-                                                <Link href={`/dashboard/models/view/${model.id}`} className="flex flex-row justify-center items-center p-[6px_12px] gap-2 w-10 h-7 bg-[#3B82F6] rounded-full border-none cursor-pointer hover:opacity-80 transition-opacity">
-                                                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                                        <path d="M8 3C4.5 3 1.73 5.61 1 9c.73 3.39 3.5 6 7 6s6.27-2.61 7-6c-.73-3.39-3.5-6-7-6zm0 10c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4zm0-6.5c-1.38 0-2.5 1.12-2.5 2.5s1.12 2.5 2.5 2.5 2.5-1.12 2.5-2.5-1.12-2.5-2.5-2.5z" fill="#E5E7EB" />
-                                                    </svg>
-                                                </Link>
-                                            </div>
-                                        </div>
-                                        {/* Edit Button */}
-                                        <div className="flex flex-col items-start p-0 gap-[10px] w-10 h-9 self-stretch">
-                                            <div className="flex flex-row items-center p-[4px_0] gap-2 w-10 h-9">
-                                                <Link href={`/dashboard/models/edit/${model.id}`} className="flex flex-row justify-center items-center p-[6px_12px] gap-2 w-10 h-7 bg-[#F59E0B] rounded-full border-none cursor-pointer hover:opacity-80 transition-opacity">
-                                                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                                        <path d="M2 11.5V14h2.5l7.37-7.37-2.5-2.5L2 11.5zM13.71 5.04c.26-.26.26-.68 0-.94l-1.56-1.56c-.26-.26-.68-.26-.94 0l-1.22 1.22 2.5 2.5 1.22-1.22z" fill="#E5E7EB" />
-                                                    </svg>
-                                                </Link>
-                                            </div>
-                                        </div>
-                                        {/* Delete Button */}
-                                        <div className="flex flex-col items-start p-0 gap-[10px] w-10 h-9 self-stretch">
-                                            <div className="flex flex-row items-center p-[4px_0] gap-2 w-10 h-9">
-                                                <button
-                                                    className="flex flex-row justify-center items-center p-[6px_12px] gap-2 w-10 h-7 bg-[#EF4444] rounded-full border-none cursor-pointer hover:opacity-80 transition-opacity"
-                                                    onClick={() => handleDeleteClick(model)} // Trigger delete popup
-                                                >
-                                                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                                        <path d="M4 12.5c0 .83.67 1.5 1.5 1.5h5c.83 0 1.5-.67 1.5-1.5v-9H4v9zM12.5 2h-2.75l-.75-.75h-2L6.25 2H3.5v1.5h9V2z" fill="#E5E7EB" />
-                                                    </svg>
-                                                </button>
-                                            </div>
+                                            )}
+                                            {isCurrentModel(model.key, 'local') && (
+                                                <span className="px-3 py-1 rounded-full text-xs font-medium" style={{ backgroundColor: 'rgba(34, 197, 94, 0.2)', color: '#22C55E' }}>
+                                                    Active
+                                                </span>
+                                            )}
                                         </div>
                                     </div>
-                                    {index < models.length - 1 && <div className="w-full h-0 border-t" style={{ borderColor: '#D9DDE0' }}></div>}
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <code className="text-xs px-2 py-1 rounded" style={{ backgroundColor: 'var(--color-bg-dark-primary)', color: 'var(--color-text-secondary)' }}>
+                                                {model.key}
+                                            </code>
+                                            {model.size && (
+                                                <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+                                                    {model.size}
+                                                </span>
+                                            )}
+                                        </div>
+                                        {!isCurrentModel(model.key, 'local') && model.is_downloaded && (
+                                            <button
+                                                onClick={() => handleSelectModel(model.key, 'local')}
+                                                className="px-4 py-2 rounded-lg border-none cursor-pointer transition-all hover:opacity-80"
+                                                style={{ backgroundColor: 'var(--color-button-primary)', color: 'white' }}
+                                            >
+                                                Use This Model
+                                            </button>
+                                        )}
+                                        {!model.is_downloaded && (
+                                            <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+                                                Not downloaded
+                                            </span>
+                                        )}
+                                    </div>
                                 </div>
-                            ))}
-                        </div>
+                            )) : (
+                                <div className="col-span-2 text-center py-12 rounded-xl" style={{ backgroundColor: 'var(--color-bg-card)', color: 'var(--color-text-secondary)' }}>
+                                    No local models available
+                                </div>
+                            )
+                        )}
                     </div>
+                )}
 
-                    {/* Pagination */}
-                    <div className="flex flex-row justify-between items-start p-0 gap-6 w-full h-10">
-                        <div className="flex flex-row items-start p-0 gap-4">
-                            <button
-                                className="flex flex-row justify-center items-center p-[8px_16px_8px_10px] gap-1 w-[134px] h-10 min-h-10 rounded-full border-none cursor-pointer hover:opacity-80 transition-opacity"
-                                onClick={handlePreviousPage}
-                            >
-                                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M12.5 15l-5-5 5-5" stroke="#595959" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                </svg>
-                                <span className="font-semibold text-[14px] leading-5 tracking-[-0.006em] text-[#595959]">Previous</span>
-                            </button>
-
-                            <div className="flex flex-row items-start p-0 gap-0">
-                                {[...Array(totalPages).keys()].map(pageNumber => (
-                                    <button
-                                        key={pageNumber}
-                                        className={`flex flex-col justify-center items-center p-[0_0_1px] gap-[10px] w-10 h-10 rounded-full border-none cursor-pointer hover:opacity-80 transition-opacity ${currentPage === pageNumber + 1 ? 'bg-[#22C55E]' : ''}`}
-                                        onClick={() => handlePageChange(pageNumber + 1)}
-                                    >
-                                        <span className={`font-medium text-[16px] leading-[22px] tracking-[-0.007em] ${currentPage === pageNumber + 1 ? 'text-[#0056A3]' : 'text-[#595959]'}`}>
-                                            {pageNumber + 1}
-                                        </span>
-                                    </button>
-                                ))}
-                            </div>
-
-                            <button
-                                className="flex flex-row justify-center items-center p-[8px_10px_8px_16px] gap-1 w-[82px] h-10 min-h-10 rounded-full border-none cursor-pointer hover:opacity-80 transition-opacity"
-                                onClick={handleNextPage}
-                            >
-                                <span className="font-semibold text-[14px] leading-5 tracking-[-0.006em] text-[#595959]">Next</span>
-                                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M7.5 15l5-5-5-5" stroke="#595959" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                </svg>
-                            </button>
+                {/* Info Card */}
+                <div className="mt-8 p-6 rounded-2xl" style={{ backgroundColor: 'var(--color-bg-card)', border: '1px solid var(--color-border-slate)' }}>
+                    <h4 className="text-lg font-semibold text-white mb-3" style={{ fontFamily: 'var(--font-family-poppins)' }}>
+                        💡 About AI Models
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="p-4 rounded-xl" style={{ backgroundColor: 'var(--color-bg-dark-primary)' }}>
+                            <p className="font-medium text-white m-0 mb-2">☁️ API Models (Groq)</p>
+                            <p className="text-sm m-0" style={{ color: 'var(--color-text-secondary)' }}>
+                                Fast, powerful cloud-based models. Requires internet connection. Best for production use.
+                            </p>
                         </div>
-
-                        <div className="flex flex-row justify-end items-center p-[8px_10px] gap-1 mx-auto w-[188px] h-10 min-h-10 rounded-full" style={{ fontFamily: 'var(--font-family-jakarta)' }}>
-                            <span className="font-semibold text-[14px] leading-5 tracking-[-0.006em] text-[#595959]">
-                                Showing {currentModels.length} of {models.length} items
-                            </span>
+                        <div className="p-4 rounded-xl" style={{ backgroundColor: 'var(--color-bg-dark-primary)' }}>
+                            <p className="font-medium text-white m-0 mb-2">💻 Local Models (Ollama)</p>
+                            <p className="text-sm m-0" style={{ color: 'var(--color-text-secondary)' }}>
+                                Run on your machine. No internet needed. Best for privacy and offline use.
+                            </p>
                         </div>
                     </div>
                 </div>
             </div>
-
-            {/* Delete Confirmation Modal */}
-            {showModal && (
-                <div className="fixed inset-0 flex items-center justify-center bg-black/50">
-                    <div className="bg-[#1F2937] p-6 rounded-lg max-w-sm w-full">
-                        <h3 className="font-bold text-lg">Confirm Deletion</h3>
-                        <p>Are you sure you want to delete this model?</p>
-                        <div className="flex justify-end gap-4 mt-4">
-                            <button
-                                className="px-4 py-2 bg-[#22C55E] rounded-lg hover:bg-[#16A34A] text-white"
-                                onClick={handleCancelDelete}
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                className="px-4 py-2 bg-[#EF4444] text-white rounded-lg hover:bg-red-600"
-                                onClick={handleConfirmDelete}
-                            >
-                                Delete
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-        </>
+        </div>
     );
 }

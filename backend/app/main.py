@@ -14,7 +14,7 @@ from fastapi.responses import Response
 
 from app.config import get_settings
 from app.database import init_db, close_db, async_session_maker
-from app.routers import auth, admin, chat
+from app.routers import auth, admin, chat, analytics
 from app.utils.logger import logger
 
 settings = get_settings()
@@ -38,7 +38,8 @@ async def seed_database():
                 email="admin@example.com",
                 hashed_password=get_password_hash("admin123"),
                 tenant_id="default_tenant",
-                is_active=True
+                is_active=True,
+                is_super_admin=True
             )
             db.add(admin_user)
             await db.commit()
@@ -112,10 +113,16 @@ static_dir = Path(__file__).parent.parent / "static"
 if static_dir.exists():
     app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
+# Mount uploads directory to serve documents
+uploads_dir = Path(settings.upload_dir)
+uploads_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=str(uploads_dir)), name="uploads")
+
 # Include routers
 app.include_router(auth.router)
 app.include_router(admin.router)
 app.include_router(chat.router)
+app.include_router(analytics.router)
 
 
 @app.get("/")
