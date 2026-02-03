@@ -417,6 +417,27 @@ export default function ChatPage() {
         }
     };
 
+    const handleCopy = (text) => {
+        navigator.clipboard.writeText(text);
+    };
+
+    const handleRegenerate = (index) => {
+        // Find the last user message before this assistant message
+        let lastUserMsg = null;
+        for (let i = index - 1; i >= 0; i--) {
+            if (messages[i].role === 'user') {
+                lastUserMsg = messages[i];
+                break;
+            }
+        }
+
+        if (lastUserMsg) {
+            // Remove the assistant message (and any subsequent ones) to restart from that point
+            setMessages(prev => prev.slice(0, index));
+            sendMessageToBackend(lastUserMsg.content);
+        }
+    };
+
     const handleFileChange = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -860,15 +881,67 @@ export default function ChatPage() {
                                                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"></path></svg>
                                                     </button>
                                                     <div className="w-[1px] h-3 bg-white/10 mx-1"></div>
-                                                    <button className="text-[10px] text-gray-500 hover:text-white transition-colors">
+                                                    <button
+                                                        onClick={() => handleCopy(message.content)}
+                                                        className="text-[10px] text-gray-500 hover:text-white transition-colors"
+                                                    >
                                                         Copy
                                                     </button>
-                                                    <button className="text-[10px] text-gray-500 hover:text-white transition-colors">
+                                                    <button
+                                                        onClick={() => handleRegenerate(index)}
+                                                        className="text-[10px] text-gray-500 hover:text-white transition-colors"
+                                                    >
                                                         Regenerate
                                                     </button>
                                                 </div>
                                             )}
                                         </div>
+
+                                        {/* Citations/Sources */}
+                                        {message.role === 'assistant' && message.sources && message.sources.length > 0 && (
+                                            <div className="flex flex-wrap gap-2 mt-1 px-2 select-none">
+                                                {message.sources.map((source, idx) => (
+                                                    <button
+                                                        key={idx}
+                                                        onClick={() => {
+                                                            if (source.document_id.startsWith('web:')) {
+                                                                window.open(source.document_id.substring(4), '_blank');
+                                                            } else {
+                                                                setViewerConfig({
+                                                                    url: `${API_URL}/chat/view-doc/${source.document_id}`,
+                                                                    filename: source.source_filename,
+                                                                    page: source.page_label
+                                                                });
+                                                            }
+                                                        }}
+                                                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-medium transition-all hover:scale-105 active:scale-95"
+                                                        style={{
+                                                            backgroundColor: source.document_id.startsWith('web:') ? 'rgba(59, 130, 246, 0.1)' : 'rgba(16, 185, 129, 0.1)',
+                                                            color: source.document_id.startsWith('web:') ? '#60a5fa' : '#34d399',
+                                                            border: `1px solid ${source.document_id.startsWith('web:') ? 'rgba(59, 130, 246, 0.2)' : 'rgba(16, 185, 129, 0.2)'}`
+                                                        }}
+                                                    >
+                                                        {source.document_id.startsWith('web:') ? (
+                                                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                                <circle cx="12" cy="12" r="10"></circle>
+                                                                <line x1="2" y1="12" x2="22" y2="12"></line>
+                                                                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                                                            </svg>
+                                                        ) : (
+                                                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                                                <polyline points="14 2 14 8 20 8"></polyline>
+                                                                <line x1="16" y1="13" x2="8" y2="13"></line>
+                                                                <line x1="16" y1="17" x2="8" y2="17"></line>
+                                                                <polyline points="10 9 9 9 8 9"></polyline>
+                                                            </svg>
+                                                        )}
+                                                        <span className="truncate max-w-[150px]">{source.source_filename}</span>
+                                                        {!source.document_id.startsWith('web:') && source.page_label && <span className="opacity-60 ml-0.5">• p.{source.page_label}</span>}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
                                         <span className="text-[11px] px-1" style={{ color: 'var(--color-text-secondary)' }}>{message.timestamp}</span>
 
                                         {/* Suggested Questions */}

@@ -82,7 +82,8 @@ Please be polite and helpful while being honest about the limitations."""
             
         # Adjust System Prompt for Web Search priority
         if web_context:
-            active_system_prompt += "\n\n**IMPORTANT: You have access to Web Search Information. If the Knowledge Base context is irrelevant, use the Web Search Information to answer the user's question directly. Do NOT say 'The context provided does not contain...' if the Web Search Information has the answer.**"
+            # Stronger instruction for LLM to trust web search
+            active_system_prompt += "\n\n**CRITICAL INSTRUCTION: You have been provided with real-time Web Search Results. You MUST use this information to answer the user's question, especially for current events (prices, news, sports). Prioritize Web Search information over your internal knowledge or the document context if they conflict. If the Web Search contains the answer, do NOT say 'The context does not contain...'**"
         
         # Check if we have ANY valid context (docs or web)
         if not retrieved_chunks and not web_context:
@@ -95,7 +96,7 @@ Please be polite and helpful while being honest about the limitations."""
         
         # Add Web Context first if available
         if web_context:
-            context_parts.append(f"**Web Search Information:**\n{web_context}")
+            context_parts.append(f"### WEB SEARCH RESULTS (Use this to answer '{query}'):\n{web_context}\n### END WEB SEARCH RESULTS")
             # Rough token estimate for web context
             current_tokens += len(web_context) // 4
         
@@ -107,13 +108,13 @@ Please be polite and helpful while being honest about the limitations."""
                 break
             
             # Add chunk without exposing internal metadata
-            context_parts.append(f"[Source {i + 1} - Reference]\n{chunk.content}")
+            context_parts.append(f"[Document Source {i + 1}]\n{chunk.content}")
             current_tokens += chunk_tokens
         
         context = "\n\n".join(context_parts)
         
         # Assemble user message with context
-        user_message = f"""**Context from knowledge base and/or web:**
+        user_message = f"""**Reference Context:**
         
 {context}
 
@@ -122,7 +123,11 @@ Please be polite and helpful while being honest about the limitations."""
 **User Question:**
 {query}
 
-Please provide a helpful answer based on the context above. If the context contains web search results, use them to answer."""
+**Instructions:**
+1. If the answer is found in the 'WEB SEARCH RESULTS' section above, answer the question directly using that information.
+2. If the answer is found in the 'Document Source' sections, use that.
+3. If the context contains relevant information, answer using it.
+4. Cite your sources if possible."""
 
         return {
             "system": active_system_prompt,

@@ -94,7 +94,8 @@ async def generate_response(
         query=question,
         tenant_id=tenant_id,
         top_k=settings.top_k_chunks,
-        use_hybrid=use_hybrid,
+        use_hybrid=settings.use_hybrid,
+        hybrid_alpha=settings.hybrid_alpha,
         relevance_threshold=settings.relevance_threshold
     )
     
@@ -136,7 +137,8 @@ async def generate_response(
             messages,
             model=settings.api_model,
             temperature=settings.temperature,
-            max_tokens=settings.max_new_tokens
+            max_tokens=settings.max_new_tokens,
+            top_p=settings.top_p
         )
         response_text = llm_response["content"]
         model_used = llm_response["model"]
@@ -303,20 +305,19 @@ async def public_chat_stream(
     
     # 3. Web Search (Optional)
     web_context = ""
+    search_results = []
     if request.web_search:
         logger.info("Performing web search...")
-        search_results = web_search.search(request.question)
-        # web_context is now passed directly, no string format needed here if passing raw results
-        # But wait, search_results IS string format from web_search.py
-        # web_context = f"\n\n**Web Search Results:**\n{search_results}" 
-        # We don't need to format it here anymore, prompt_assembler does it.
+        search_results = await web_search.search(request.question)
+        web_context = web_search.format_for_context(search_results)
     
     # 4. RAG Retrieval
     retrieved = await retriever.retrieve(
         query=request.question,
         tenant_id=request.tenant_id,
         top_k=settings.top_k_chunks,
-        use_hybrid=False,
+        use_hybrid=settings.use_hybrid,
+        hybrid_alpha=settings.hybrid_alpha,
         relevance_threshold=settings.relevance_threshold
     )
     
@@ -330,7 +331,7 @@ async def public_chat_stream(
         no_context_prompt=settings.no_context_prompt,
         conversation_history=conversation_history,
         context_summary=final_context_summary,
-        web_context=search_results if request.web_search and search_results else None
+        web_context=web_context if request.web_search and web_context else None
     )
     
     # 6. Stream Generation
@@ -375,7 +376,8 @@ async def public_chat_stream(
                 stream = llm_generator.generate_stream(
                     messages, 
                     temperature=settings.temperature,
-                    max_tokens=settings.max_new_tokens
+                    max_tokens=settings.max_new_tokens,
+                    top_p=settings.top_p
                 )
                 
                 async for chunk in stream:
@@ -383,16 +385,35 @@ async def public_chat_stream(
                     yield f"data: {json.dumps({'content': chunk, 'is_final': False})}\n\n"
             
             # 7. Post-generation: Save to DB
-            chunks_data = [
+            chunks_data = []
+            
+            # Start with Web Results (if any)
+            if request.web_search and search_results:
+                for res in search_results:
+                    chunks_data.append(
+                        RetrievedChunk(
+                            content=res.get("body", "")[:200],
+                            document_id=f"web:{res.get('href')}",
+                            document_version=0,
+                            source_filename=res.get("title", "Web Result"),
+                            chunk_index=0,
+                            relevance_score=1.0,
+                            page_label="Web"
+                        ).model_dump()
+                    )
+            
+            # Append Document Results
+            chunks_data.extend([
                 RetrievedChunk(
                     content=c.content[:200], 
                     document_id=c.document_id,
                     document_version=c.document_version,
                     source_filename=c.source_filename,
                     chunk_index=c.chunk_index,
-                    relevance_score=c.relevance_score
+                    relevance_score=c.relevance_score,
+                    page_label=c.page_label
                 ).model_dump() for c in retrieved
-            ]
+            ])
             
             # Save User Message
             db.add(ChatMessage(session_id=session.id, role="user", content=request.question, intent=primary_intent))
@@ -545,7 +566,7 @@ async def public_chat(
             question=request.question,
             tenant_id=request.tenant_id,
             settings=settings,
-            use_hybrid=False,
+            use_hybrid=settings.use_hybrid,
             conversation_history=conversation_history,
             context_summary=session.context_summary  # Pass detected context
         )

@@ -35,6 +35,10 @@ class TenantSettingsBase(BaseModel):
     # Retrieval Settings
     top_k_chunks: int = Field(5, ge=1, le=20)
     relevance_threshold: float = Field(0.1, ge=0.0, le=1.0)
+    
+    # Hybrid Search Settings
+    use_hybrid: bool = False
+    hybrid_alpha: float = Field(0.7, ge=0.0, le=1.0)
 
 
 class TenantSettingsUpdate(BaseModel):
@@ -59,6 +63,10 @@ class TenantSettingsUpdate(BaseModel):
     # Retrieval Settings
     top_k_chunks: Optional[int] = Field(None, ge=1, le=20)
     relevance_threshold: Optional[float] = Field(None, ge=0.0, le=1.0)
+    
+    # Hybrid Search Settings
+    use_hybrid: Optional[bool] = None
+    hybrid_alpha: Optional[float] = Field(None, ge=0.0, le=1.0)
 
 
 class TenantSettingsResponse(TenantSettingsBase):

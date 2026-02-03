@@ -24,6 +24,8 @@ export default function SettingsPage() {
         repetition_penalty: 1.1,
         top_k_chunks: 5,
         relevance_threshold: 0.1,
+        use_hybrid: false,
+        hybrid_alpha: 0.7,
         system_prompt: '',
         no_context_prompt: ''
     });
@@ -294,6 +296,47 @@ export default function SettingsPage() {
                         />
                         <p className="text-xs text-gray-500 mt-1">Minimum similarity score (0 = all, 1 = exact match)</p>
                     </div>
+
+                    {/* Hybrid Search Toggle */}
+                    <div className="flex items-center justify-between p-4 bg-gray-800 rounded-lg border border-gray-600">
+                        <div>
+                            <label className="block text-white text-sm font-medium mb-1">
+                                Hybrid Search
+                            </label>
+                            <p className="text-xs text-gray-400">Combine vector search with keyword matching</p>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                            <input
+                                type="checkbox"
+                                checked={settings.use_hybrid || false}
+                                onChange={(e) => handleChange('use_hybrid', e.target.checked)}
+                                className="sr-only peer"
+                            />
+                            <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                        </label>
+                    </div>
+
+                    {/* Hybrid Alpha (Only visible if Hybrid is enabled) */}
+                    {settings.use_hybrid && (
+                        <div>
+                            <label className="block text-gray-400 text-sm mb-2">
+                                Hybrid Alpha (Vector Weight): {settings.hybrid_alpha}
+                            </label>
+                            <input
+                                type="range"
+                                min="0"
+                                max="1"
+                                step="0.1"
+                                value={settings.hybrid_alpha || 0.7}
+                                onChange={(e) => handleChange('hybrid_alpha', parseFloat(e.target.value))}
+                                className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-purple-500"
+                            />
+                            <div className="flex justify-between text-xs text-gray-500 mt-1">
+                                <span>Keywords (0.0)</span>
+                                <span>Vectors (1.0)</span>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
 

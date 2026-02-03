@@ -80,6 +80,10 @@ Please try rephrasing your question or ask about something related to the docume
     top_k_chunks = Column(Integer, default=5)
     relevance_threshold = Column(Float, default=0.1)
     
+    # Hybrid Search Settings
+    use_hybrid = Column(Boolean, default=False)
+    hybrid_alpha = Column(Float, default=0.7)  # Weight for vector search (0.0 - 1.0)
+    
     # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
