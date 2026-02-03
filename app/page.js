@@ -42,13 +42,18 @@ export default function Home() {
         throw new Error(data.detail || 'Login failed');
       }
 
-      // Save token and user info to localStorage (using faris branch convention)
+      // Save token and user info to localStorage
       localStorage.setItem('token', data.access_token);
       localStorage.setItem('username', username);
       localStorage.setItem('tenant_id', data.tenant_id || 'default_tenant');
+      localStorage.setItem('is_super_admin', data.is_super_admin ? 'true' : 'false');
 
-      // Redirect to dashboard
-      router.push('/dashboard');
+      // Redirect based on user type
+      if (data.is_super_admin) {
+        router.push('/dashboard/superadmin');
+      } else {
+        router.push('/dashboard');
+      }
     } catch (err) {
       console.error('Login error:', err);
       setError(err.message || 'Login failed. Please try again.');

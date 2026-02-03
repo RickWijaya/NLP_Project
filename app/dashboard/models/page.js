@@ -18,6 +18,7 @@ export default function ModelsPage() {
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
     const [token, setToken] = useState('');
+    const [downloadingModels, setDownloadingModels] = useState(new Set());
 
     useEffect(() => {
         const storedToken = localStorage.getItem('token');
@@ -83,8 +84,8 @@ export default function ModelsPage() {
                 },
                 body: JSON.stringify({
                     model_type: modelType,
-                    api_model_name: modelType === 'api' ? modelKey : currentSettings?.api_model_name,
-                    local_model_name: modelType === 'local' ? modelKey : currentSettings?.local_model_name
+                    api_model: modelType === 'api' ? modelKey : currentSettings?.api_model,
+                    local_model: modelType === 'local' ? modelKey : currentSettings?.local_model
                 })
             });
 
@@ -111,9 +112,99 @@ export default function ModelsPage() {
     const isCurrentModel = (modelKey, modelType) => {
         if (!currentSettings) return false;
         if (currentSettings.model_type !== modelType) return false;
-        if (modelType === 'api') return currentSettings.api_model_name === modelKey;
-        if (modelType === 'local') return currentSettings.local_model_name === modelKey;
+        if (modelType === 'api') return currentSettings.api_model === modelKey;
+        if (modelType === 'local') return currentSettings.local_model === modelKey;
         return false;
+    };
+
+    const handleDownloadModel = async (modelKey) => {
+        setError('');
+        setSuccess('');
+
+        // Add to downloading set
+        setDownloadingModels(prev => new Set([...prev, modelKey]));
+
+        try {
+            const response = await fetch(`${API_URL}/admin/models/download`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ model_key: modelKey })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                if (data.status === 'already_downloaded') {
+                    setSuccess(`Model ${modelKey} is already downloaded!`);
+                    // Refresh models list
+                    await fetchModels(token);
+                } else if (data.status === 'downloading') {
+                    setSuccess(`Download started for ${modelKey}. This may take several minutes...`);
+                    // Poll for completion
+                    pollDownloadStatus(modelKey);
+                }
+            } else {
+                throw new Error(data.detail || 'Failed to start download');
+            }
+        } catch (err) {
+            setError(err.message);
+            setDownloadingModels(prev => {
+                const newSet = new Set(prev);
+                newSet.delete(modelKey);
+                return newSet;
+            });
+        }
+    };
+
+    const pollDownloadStatus = async (modelKey) => {
+        // Poll every 5 seconds to check if model is downloaded
+        const checkStatus = async () => {
+            try {
+                const response = await fetch(`${API_URL}/admin/available-models`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    const model = data.local_models?.find(m => m.key === modelKey);
+                    if (model?.is_downloaded) {
+                        setLocalModels(data.local_models || []);
+                        setDownloadingModels(prev => {
+                            const newSet = new Set(prev);
+                            newSet.delete(modelKey);
+                            return newSet;
+                        });
+                        setSuccess(`Model ${modelKey} downloaded successfully!`);
+                        return true;
+                    }
+                }
+            } catch (err) {
+                console.error('Error checking download status:', err);
+            }
+            return false;
+        };
+
+        // Check every 5 seconds for up to 10 minutes
+        let attempts = 0;
+        const maxAttempts = 120; // 10 minutes
+
+        const interval = setInterval(async () => {
+            attempts++;
+            const done = await checkStatus();
+            if (done || attempts >= maxAttempts) {
+                clearInterval(interval);
+                if (attempts >= maxAttempts) {
+                    setError(`Download timeout for ${modelKey}. Please check server logs.`);
+                    setDownloadingModels(prev => {
+                        const newSet = new Set(prev);
+                        newSet.delete(modelKey);
+                        return newSet;
+                    });
+                }
+            }
+        }, 5000);
     };
 
     return (
@@ -159,7 +250,7 @@ export default function ModelsPage() {
                             <div>
                                 <p className="text-sm m-0 mb-1" style={{ color: 'var(--color-text-secondary)' }}>Currently Active Model</p>
                                 <p className="text-xl font-bold text-white m-0">
-                                    {currentSettings.model_type === 'api' ? currentSettings.api_model_name : currentSettings.local_model_name}
+                                    {currentSettings.model_type === 'api' ? currentSettings.api_model : currentSettings.local_model}
                                 </p>
                                 <p className="text-sm m-0 mt-1" style={{ color: 'var(--color-button-primary)' }}>
                                     {currentSettings.model_type === 'api' ? '☁️ Cloud API' : '💻 Local Model'}
@@ -241,7 +332,17 @@ export default function ModelsPage() {
                                         <code className="text-xs px-2 py-1 rounded" style={{ backgroundColor: 'var(--color-bg-dark-primary)', color: 'var(--color-text-secondary)' }}>
                                             {model.key}
                                         </code>
-                                        {!isCurrentModel(model.key, 'api') && (
+                                        {isCurrentModel(model.key, 'api') ? (
+                                            <span
+                                                className="px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2"
+                                                style={{ backgroundColor: 'rgba(34, 197, 94, 0.2)', color: '#22C55E' }}
+                                            >
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                                                    <path d="M20 6L9 17l-5-5" />
+                                                </svg>
+                                                Selected
+                                            </span>
+                                        ) : (
                                             <button
                                                 onClick={() => handleSelectModel(model.key, 'api')}
                                                 className="px-4 py-2 rounded-lg border-none cursor-pointer transition-all hover:opacity-80"
@@ -300,19 +401,51 @@ export default function ModelsPage() {
                                                 </span>
                                             )}
                                         </div>
-                                        {!isCurrentModel(model.key, 'local') && model.is_downloaded && (
-                                            <button
-                                                onClick={() => handleSelectModel(model.key, 'local')}
-                                                className="px-4 py-2 rounded-lg border-none cursor-pointer transition-all hover:opacity-80"
-                                                style={{ backgroundColor: 'var(--color-button-primary)', color: 'white' }}
-                                            >
-                                                Use This Model
-                                            </button>
+                                        {model.is_downloaded && (
+                                            isCurrentModel(model.key, 'local') ? (
+                                                <span
+                                                    className="px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2"
+                                                    style={{ backgroundColor: 'rgba(34, 197, 94, 0.2)', color: '#22C55E' }}
+                                                >
+                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                                                        <path d="M20 6L9 17l-5-5" />
+                                                    </svg>
+                                                    Selected
+                                                </span>
+                                            ) : (
+                                                <button
+                                                    onClick={() => handleSelectModel(model.key, 'local')}
+                                                    className="px-4 py-2 rounded-lg border-none cursor-pointer transition-all hover:opacity-80"
+                                                    style={{ backgroundColor: 'var(--color-button-primary)', color: 'white' }}
+                                                >
+                                                    Use This Model
+                                                </button>
+                                            )
                                         )}
                                         {!model.is_downloaded && (
-                                            <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
-                                                Not downloaded
-                                            </span>
+                                            <button
+                                                onClick={() => handleDownloadModel(model.key)}
+                                                disabled={downloadingModels.has(model.key)}
+                                                className="px-4 py-2 rounded-lg border-none cursor-pointer transition-all hover:opacity-80 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                style={{ backgroundColor: '#3B82F6', color: 'white' }}
+                                            >
+                                                {downloadingModels.has(model.key) ? (
+                                                    <>
+                                                        <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                                        </svg>
+                                                        Downloading...
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" />
+                                                        </svg>
+                                                        Download
+                                                    </>
+                                                )}
+                                            </button>
                                         )}
                                     </div>
                                 </div>

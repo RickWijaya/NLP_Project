@@ -295,3 +295,92 @@ async def toggle_tenant_status(
         "is_active": target_admin.is_active,
         "message": f"Tenant {'enabled' if target_admin.is_active else 'disabled'}"
     }
+
+
+# ============================================================================
+# Feedback Analytics
+# ============================================================================
+
+class FeedbackItem(BaseModel):
+    message_id: str
+    session_id: str
+    content: str
+    rating: int
+    feedback_text: Optional[str]
+    created_at: str
+
+
+class FeedbackStats(BaseModel):
+    total_rated: int
+    positive: int
+    negative: int
+    satisfaction_rate: float
+    recent_feedback: List[FeedbackItem]
+
+
+@router.get("/feedback", response_model=FeedbackStats)
+async def get_feedback_stats(
+    admin: Admin = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db),
+    limit: int = Query(default=20, ge=1, le=100)
+):
+    """Get feedback statistics and recent rated messages for the current tenant."""
+    tenant_id = admin.tenant_id
+    
+    # Count positive ratings
+    positive_result = await db.execute(
+        select(func.count(ChatMessage.id))
+        .join(ChatSession)
+        .where(and_(
+            ChatSession.tenant_id == tenant_id,
+            ChatMessage.rating == 1
+        ))
+    )
+    positive = positive_result.scalar() or 0
+    
+    # Count negative ratings
+    negative_result = await db.execute(
+        select(func.count(ChatMessage.id))
+        .join(ChatSession)
+        .where(and_(
+            ChatSession.tenant_id == tenant_id,
+            ChatMessage.rating == -1
+        ))
+    )
+    negative = negative_result.scalar() or 0
+    
+    total_rated = positive + negative
+    satisfaction_rate = (positive / total_rated * 100) if total_rated > 0 else 0.0
+    
+    # Get recent feedback
+    recent_result = await db.execute(
+        select(ChatMessage)
+        .join(ChatSession)
+        .where(and_(
+            ChatSession.tenant_id == tenant_id,
+            ChatMessage.rating.isnot(None)
+        ))
+        .order_by(ChatMessage.created_at.desc())
+        .limit(limit)
+    )
+    recent_messages = recent_result.scalars().all()
+    
+    recent_feedback = [
+        FeedbackItem(
+            message_id=str(m.id),
+            session_id=str(m.session_id),
+            content=m.content[:200] + "..." if m.content and len(m.content) > 200 else (m.content or ""),
+            rating=m.rating,
+            feedback_text=m.feedback_text,
+            created_at=m.created_at.isoformat() if m.created_at else ""
+        )
+        for m in recent_messages
+    ]
+    
+    return FeedbackStats(
+        total_rated=total_rated,
+        positive=positive,
+        negative=negative,
+        satisfaction_rate=round(satisfaction_rate, 1),
+        recent_feedback=recent_feedback
+    )
