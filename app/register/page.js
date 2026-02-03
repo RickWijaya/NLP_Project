@@ -78,6 +78,7 @@ export default function RegisterPage() {
             }
 
             // Registration successful, redirect to login
+            alert('Registration successful! Please login.');
             router.push('/');
         } catch (err) {
             console.error('Registration error:', err);

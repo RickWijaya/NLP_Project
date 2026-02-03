@@ -64,7 +64,7 @@ class Retriever:
         self.top_k = top_k or settings.top_k
         self.relevance_threshold = relevance_threshold or settings.relevance_threshold
     
-    async def retrieve(
+    def retrieve(
         self,
         query: str,
         tenant_id: str,
@@ -95,7 +95,7 @@ class Retriever:
         # Determine queries to search
         queries_to_search = [query]
         if settings.use_query_expansion:
-            expanded = await query_expander.generate_variations(query)
+            expanded = query_expander.generate_variations(query)
             # Ensure unique and contains original
             unique_queries = {query.lower()}
             for q in expanded:

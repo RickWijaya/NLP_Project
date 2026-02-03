@@ -51,9 +51,7 @@ Please be polite and helpful while being honest about the limitations."""
         max_context_tokens: int = 3000,
         system_prompt: Optional[str] = None,
         no_context_prompt: Optional[str] = None,
-        conversation_history: Optional[List[dict]] = None,
-        context_summary: Optional[str] = None,
-        web_context: Optional[str] = None
+        conversation_history: Optional[List[dict]] = None
     ) -> dict:
         """
         Assemble the prompt for the LLM.
@@ -65,8 +63,6 @@ Please be polite and helpful while being honest about the limitations."""
             system_prompt: Custom system prompt (optional)
             no_context_prompt: Custom no-context prompt (optional)
             conversation_history: Previous messages for multi-turn chat
-            context_summary: Extracted user goal/context from intelligence module
-            web_context: Results from web search
             
         Returns:
             Dictionary with 'system', 'user', and optionally 'history' keys
@@ -75,29 +71,13 @@ Please be polite and helpful while being honest about the limitations."""
         active_system_prompt = system_prompt if system_prompt else self.SYSTEM_PROMPT
         active_no_context_prompt = no_context_prompt if no_context_prompt else self.NO_CONTEXT_SYSTEM_PROMPT
         
-        # Inject context summary into system prompt if available
-        if context_summary:
-            active_system_prompt += f"\n\n**Current Context/User Goal:**\n{context_summary}"
-            active_no_context_prompt += f"\n\n**Current Context/User Goal:**\n{context_summary}"
-            
-        # Adjust System Prompt for Web Search priority
-        if web_context:
-            active_system_prompt += "\n\n**IMPORTANT: You have access to Web Search Information. If the Knowledge Base context is irrelevant, use the Web Search Information to answer the user's question directly. Do NOT say 'The context provided does not contain...' if the Web Search Information has the answer.**"
-        
-        # Check if we have ANY valid context (docs or web)
-        if not retrieved_chunks and not web_context:
+        if not retrieved_chunks:
             # No context fallback
             return self._assemble_no_context(query, active_no_context_prompt, conversation_history)
         
         # Build context from chunks (without exposing metadata)
         context_parts = []
         current_tokens = 0
-        
-        # Add Web Context first if available
-        if web_context:
-            context_parts.append(f"**Web Search Information:**\n{web_context}")
-            # Rough token estimate for web context
-            current_tokens += len(web_context) // 4
         
         for i, chunk in enumerate(retrieved_chunks):
             # Estimate tokens (rough: 4 chars per token)
@@ -107,14 +87,14 @@ Please be polite and helpful while being honest about the limitations."""
                 break
             
             # Add chunk without exposing internal metadata
-            context_parts.append(f"[Source {i + 1} - Reference]\n{chunk.content}")
+            context_parts.append(f"[Source {i + 1}]\n{chunk.content}")
             current_tokens += chunk_tokens
         
         context = "\n\n".join(context_parts)
         
         # Assemble user message with context
-        user_message = f"""**Context from knowledge base and/or web:**
-        
+        user_message = f"""**Context from knowledge base:**
+
 {context}
 
 ---
@@ -122,7 +102,7 @@ Please be polite and helpful while being honest about the limitations."""
 **User Question:**
 {query}
 
-Please provide a helpful answer based on the context above. If the context contains web search results, use them to answer."""
+Please provide a helpful answer based on the context above."""
 
         return {
             "system": active_system_prompt,

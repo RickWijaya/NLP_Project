@@ -13,7 +13,6 @@ class ChatRequest(BaseModel):
     session_id: Optional[str] = None  # Optional session for history
     top_k: Optional[int] = Field(default=5, ge=1, le=20)
     use_hybrid_search: bool = False
-    web_search: bool = False
 
 
 class PublicChatRequest(BaseModel):
@@ -22,7 +21,6 @@ class PublicChatRequest(BaseModel):
     tenant_id: str = Field(..., min_length=1)
     session_id: Optional[str] = None  # Optional session for history
     user_identifier: Optional[str] = None  # Optional user tracking (IP, cookie, etc.)
-    web_search: bool = False
 
 
 class RetrievedChunk(BaseModel):
@@ -64,7 +62,6 @@ class ChatMessageSchema(BaseModel):
     chunks_used: int = 0
     model_used: Optional[str] = None
     created_at: datetime
-    rating: Optional[int] = None
     
     class Config:
         from_attributes = True

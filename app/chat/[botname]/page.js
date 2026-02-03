@@ -1,13 +1,10 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { useParams, useSearchParams } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
-import remarkMath from 'remark-math';
-import rehypeKatex from 'rehype-katex';
-import 'katex/dist/katex.min.css';
 
 // Backend API URL
 const API_URL = 'http://127.0.0.1:8000';
@@ -26,123 +23,14 @@ export default function ChatPage() {
     const [isUploading, setIsUploading] = useState(false);
     const [expandedSources, setExpandedSources] = useState({}); // Track expanded source sections
     const [viewerConfig, setViewerConfig] = useState(null); // { url, page }
-    const [useWebSearch, setUseWebSearch] = useState(false);
-
-    // Auth State
-    const [currentUser, setCurrentUser] = useState(null);
-    const [authModalOpen, setAuthModalOpen] = useState(false);
-    const [authMode, setAuthMode] = useState('login'); // 'login' or 'register'
-    const [authLoading, setAuthLoading] = useState(false);
-    const [authError, setAuthError] = useState('');
-
-    // Confirmation dialog state
-    const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
-    const [sessionToDelete, setSessionToDelete] = useState(null);
-    const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
 
     const params = useParams();
-    const searchParams = useSearchParams();
-    const isIframe = searchParams.get('mode') === 'iframe';
-
-    // Effect to close sidebar automatically in iframe mode
-    useEffect(() => {
-        if (isIframe) {
-            setSidebarOpen(false);
-        }
-    }, [isIframe]);
 
     useEffect(() => {
         if (params.botname) {
             setBotname(params.botname);
         }
     }, [params.botname]);
-
-    // Check local storage for user
-    useEffect(() => {
-        const storedUser = localStorage.getItem('chat_user_info');
-        if (storedUser) {
-            try {
-                setCurrentUser(JSON.parse(storedUser));
-            } catch (e) {
-                console.error("Failed to parse user info");
-            }
-        }
-    }, []);
-
-    const promptLogout = () => {
-        setLogoutConfirmOpen(true);
-    };
-
-    const confirmLogout = () => {
-        localStorage.removeItem('chat_user_token');
-        localStorage.removeItem('chat_user_info');
-        setCurrentUser(null);
-        setSessions([]);
-        setSessionId(null);
-        setMessages([{ role: 'assistant', content: `Hello! How can I help you today?`, timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }]);
-        setLogoutConfirmOpen(false);
-    };
-
-    // Keep original handleLogout for token expiration cases (no confirmation needed)
-    const handleLogout = () => {
-        localStorage.removeItem('chat_user_token');
-        localStorage.removeItem('chat_user_info');
-        setCurrentUser(null);
-        setSessions([]);
-        setSessionId(null);
-        setMessages([{ role: 'assistant', content: `Hello! How can I help you today?`, timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }]);
-    };
-
-    const handleAuth = async (e) => {
-        e.preventDefault();
-        setAuthLoading(true);
-        setAuthError('');
-
-        const email = e.target.email.value;
-        const password = e.target.password.value;
-        const endpoint = authMode === 'login' ? '/auth/user/login' : '/auth/user/register';
-
-        try {
-            const res = await fetch(`${API_URL}${endpoint}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    email,
-                    password,
-                    tenant_id: botname
-                })
-            });
-
-            const data = await res.json();
-
-            if (!res.ok) {
-                throw new Error(data.detail || 'Authentication failed');
-            }
-
-            if (authMode === 'login') {
-                localStorage.setItem('chat_user_token', data.access_token);
-                const userInfo = {
-                    id: data.user_id,
-                    email: data.email,
-                    tenant_id: data.tenant_id
-                };
-                localStorage.setItem('chat_user_info', JSON.stringify(userInfo));
-                setCurrentUser(userInfo);
-                setAuthModalOpen(false);
-                fetchSessions(); // Refresh sessions after login
-            } else {
-                // Register successful, switch to login or auto-login
-                setAuthMode('login');
-                setAuthError('Registration successful! Please sign in.');
-                setAuthLoading(false);
-                return;
-            }
-        } catch (err) {
-            setAuthError(err.message);
-        } finally {
-            setAuthLoading(false);
-        }
-    };
 
     const [messages, setMessages] = useState([
         { role: 'assistant', content: `Hello! How can I help you today?`, timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) },
@@ -159,30 +47,11 @@ export default function ChatPage() {
 
     const fetchSessions = async () => {
         if (!botname) return;
-
-        // If not logged in, do not fetch sessions (as per requirement)
-        // Or handle guest sessions differently? 
-        // Backend now REQUIRES auth for getting sessions.
-        const token = localStorage.getItem('chat_user_token');
-        if (!token) {
-            setSessions([]);
-            setLoadingSessions(false);
-            return;
-        }
-
         try {
-            const response = await fetch(`${API_URL}/chat/sessions?tenant_id=${botname}`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
-
+            const response = await fetch(`${API_URL}/chat/sessions?tenant_id=${botname}`);
             if (response.ok) {
                 const data = await response.json();
                 setSessions(data.sessions || []);
-            } else if (response.status === 401) {
-                // Token invalid
-                handleLogout();
             }
         } catch (error) {
             console.error('Error fetching sessions:', error);
@@ -200,22 +69,14 @@ export default function ChatPage() {
     const loadSession = async (selectedSessionId) => {
         try {
             setIsLoading(true);
-            const token = localStorage.getItem('chat_user_token');
-            const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
-
-            const response = await fetch(`${API_URL}/chat/sessions/${selectedSessionId}`, {
-                headers: headers
-            });
-
+            const response = await fetch(`${API_URL}/chat/sessions/${selectedSessionId}`);
             if (response.ok) {
                 const data = await response.json();
                 setSessionId(selectedSessionId);
                 const formattedMessages = data.messages.map(m => ({
                     role: m.role,
                     content: m.content,
-                    timestamp: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                    id: m.id,
-                    rating: m.rating
+                    timestamp: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                 }));
                 setMessages(formattedMessages.length > 0 ? formattedMessages : [
                     { role: 'assistant', content: `Hello! How can I help you today?`, timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }
@@ -231,13 +92,9 @@ export default function ChatPage() {
     const startNewChat = async () => {
         try {
             setIsLoading(true);
-            const token = localStorage.getItem('chat_user_token');
-            const headers = { 'Content-Type': 'application/json' };
-            if (token) headers['Authorization'] = `Bearer ${token}`;
-
             const response = await fetch(`${API_URL}/chat/sessions`, {
                 method: 'POST',
-                headers: headers,
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     tenant_id: botname,
                     title: 'New Conversation',
@@ -259,34 +116,17 @@ export default function ChatPage() {
         }
     };
 
-    const promptDeleteSession = (sessionIdToDelete, e) => {
+    const deleteSession = async (sessionIdToDelete, e) => {
         e.stopPropagation();
-        setSessionToDelete(sessionIdToDelete);
-        setDeleteConfirmOpen(true);
-    };
-
-    const confirmDeleteSession = async () => {
-        if (!sessionToDelete) return;
-
         try {
-            const token = localStorage.getItem('chat_user_token');
-            const headers = {};
-            if (token) headers['Authorization'] = `Bearer ${token}`;
-
-            await fetch(`${API_URL}/chat/sessions/${sessionToDelete}`, {
-                method: 'DELETE',
-                headers: headers
-            });
-            setSessions(prev => prev.filter(s => s.id !== sessionToDelete));
-            if (sessionId === sessionToDelete) {
+            await fetch(`${API_URL}/chat/sessions/${sessionIdToDelete}`, { method: 'DELETE' });
+            setSessions(prev => prev.filter(s => s.id !== sessionIdToDelete));
+            if (sessionId === sessionIdToDelete) {
                 setSessionId(null);
-                setMessages([{ role: 'assistant', content: `Hello! How can I help you today?`, timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }]);
+                setMessages([]);
             }
         } catch (error) {
             console.error('Error deleting session:', error);
-        } finally {
-            setDeleteConfirmOpen(false);
-            setSessionToDelete(null);
         }
     };
 
@@ -300,120 +140,38 @@ export default function ChatPage() {
         setIsLoading(true);
 
         try {
-            const token = localStorage.getItem('chat_user_token');
-            const headers = { 'Content-Type': 'application/json' };
-            if (token) headers['Authorization'] = `Bearer ${token}`;
-
-            const response = await fetch(`${API_URL}/chat/public/stream`, {
+            const response = await fetch(`${API_URL}/chat/public`, {
                 method: 'POST',
-                headers: headers,
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     question: userMessage,
                     tenant_id: botname || 'default_tenant',
                     session_id: sessionId,
-                    user_identifier: getUserIdentifier(),
-                    web_search: useWebSearch
+                    user_identifier: getUserIdentifier()
                 })
             });
 
             if (!response.ok) throw new Error('Failed to get response');
+            const data = await response.json();
 
-            // Create placeholder for assistant message
-            const initialResTimestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            setMessages(prev => [...prev, {
-                role: 'assistant',
-                content: useWebSearch ? '🔍 *Searching the web...*' : 'Thinking...',
-                timestamp: initialResTimestamp,
-                isLoading: true,
-                isSearching: useWebSearch
-            }]);
-
-            const reader = response.body.getReader();
-            const decoder = new TextDecoder();
-            let assistantMessage = "";
-            let buffer = "";
-
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-
-                buffer += decoder.decode(value, { stream: true });
-                const lines = buffer.split('\n\n');
-                buffer = lines.pop(); // Keep the last partial line
-
-                for (const line of lines) {
-                    if (line.startsWith('data: ')) {
-                        try {
-                            const data = JSON.parse(line.slice(6));
-                            if (data.is_final) {
-                                // Final update for metadata
-                                setIsLoading(false);
-                                if (data.session_id && !sessionId) {
-                                    setSessionId(data.session_id);
-                                    fetchSessions();
-                                }
-                                setMessages(prev => {
-                                    const newMsgs = [...prev];
-                                    const lastMsg = newMsgs[newMsgs.length - 1];
-                                    lastMsg.suggestions = data.suggestions || [];
-                                    lastMsg.sources = data.retrieved_chunks || [];
-                                    lastMsg.id = data.assistant_message_id; // Capture ID
-                                    lastMsg.isLoading = false;
-                                    return newMsgs;
-                                });
-                            } else {
-                                assistantMessage += data.content;
-                                setMessages(prev => {
-                                    const newMsgs = [...prev];
-                                    const lastMsg = newMsgs[newMsgs.length - 1];
-                                    if (lastMsg.isSearching) {
-                                        lastMsg.content = assistantMessage; // Replace "Searching..." with actual content
-                                        lastMsg.isSearching = false;
-                                    } else {
-                                        lastMsg.content = assistantMessage;
-                                    }
-                                    return newMsgs;
-                                });
-                            }
-                        } catch (e) {
-                            console.error('Error parsing SSE:', e);
-                        }
-                    }
-                }
+            if (data.session_id) {
+                if (!sessionId) setSessionId(data.session_id);
+                fetchSessions();
             }
 
+            const responseTimestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            setMessages(prevMessages => [...prevMessages, {
+                role: 'assistant',
+                content: data.answer,
+                timestamp: responseTimestamp,
+                suggestions: data.suggestions || [],
+                sources: data.retrieved_chunks || []
+            }]);
         } catch (error) {
             console.error('Error:', error);
             setMessages(prevMessages => [...prevMessages, { role: 'assistant', content: 'Sorry, I encountered an error. Please try again.', timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }]);
         } finally {
             setIsLoading(false);
-        }
-    };
-
-    const handleFeedback = async (messageId, rating) => {
-        if (!messageId) return;
-
-        // Optimistic update
-        setMessages(prev => prev.map(msg =>
-            msg.id === messageId ? { ...msg, rating } : msg
-        ));
-
-        try {
-            const token = localStorage.getItem('chat_user_token');
-            const headers = { 'Content-Type': 'application/json' };
-            if (token) headers['Authorization'] = `Bearer ${token}`;
-
-            await fetch(`${API_URL}/chat/messages/${messageId}/feedback`, {
-                method: 'PUT',
-                headers: headers,
-                body: JSON.stringify({ rating })
-            });
-        } catch (error) {
-            console.error('Feedback error:', error);
-            // Revert on error
-            setMessages(prev => prev.map(msg =>
-                msg.id === messageId ? { ...msg, rating: undefined } : msg
-            ));
         }
     };
 
@@ -646,7 +404,7 @@ export default function ChatPage() {
                                             </div>
                                         </div>
                                         <button
-                                            onClick={(e) => promptDeleteSession(session.id, e)}
+                                            onClick={(e) => deleteSession(session.id, e)}
                                             className="opacity-0 group-hover:opacity-100 p-2 rounded-lg transition-all"
                                             style={{ backgroundColor: 'rgba(225, 29, 72, 0.1)' }}
                                         >
@@ -662,43 +420,17 @@ export default function ChatPage() {
 
                     {/* Footer */}
                     <div className="pt-4 mt-4" style={{ borderTop: '1px solid var(--color-border-slate)' }}>
-                        {currentUser ? (
-                            <div className="flex items-center gap-3 p-3 rounded-xl" style={{ backgroundColor: 'var(--color-bg-dark-primary)' }}>
-                                <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white uppercase" style={{ backgroundColor: 'var(--color-button-primary)' }}>
-                                    {currentUser.email ? currentUser.email.charAt(0) : '?'}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-medium truncate" style={{ color: 'var(--color-text-primary)' }}>{currentUser.email}</p>
-                                    <button
-                                        onClick={promptLogout}
-                                        className="text-xs hover:text-red-400 transition-colors"
-                                        style={{ color: 'var(--color-text-secondary)' }}
-                                    >
-                                        Sign Out
-                                    </button>
-                                </div>
+                        <div className="flex items-center gap-3 p-3 rounded-xl" style={{ backgroundColor: 'var(--color-bg-dark-primary)' }}>
+                            <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ backgroundColor: 'var(--color-button-primary)' }}>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                                    <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z" stroke="white" strokeWidth="2" />
+                                </svg>
                             </div>
-                        ) : (
-                            <div className="flex flex-col gap-2">
-                                <p className="text-xs text-center mb-1" style={{ color: 'var(--color-text-secondary)' }}>
-                                    Sign in to save chat history
-                                </p>
-                                <button
-                                    onClick={() => { setAuthMode('login'); setAuthModalOpen(true); }}
-                                    className="w-full py-2 rounded-lg text-sm font-medium transition-all hover:bg-white/10"
-                                    style={{ border: '1px solid var(--color-border-slate)', color: 'var(--color-text-primary)' }}
-                                >
-                                    Sign In
-                                </button>
-                                <button
-                                    onClick={() => { setAuthMode('register'); setAuthModalOpen(true); }}
-                                    className="w-full py-2 rounded-lg text-sm font-medium transition-all hover:opacity-90"
-                                    style={{ backgroundColor: 'var(--color-button-primary)', color: 'white' }}
-                                >
-                                    Sign Up
-                                </button>
+                            <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium truncate" style={{ color: 'var(--color-text-primary)' }}>Guest User</p>
+                                <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>Free Plan</p>
                             </div>
-                        )}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -715,17 +447,15 @@ export default function ChatPage() {
                 >
                     <div className="flex flex-row items-center gap-4">
                         {/* Toggle Sidebar Button */}
-                        {!isIframe && (
-                            <button
-                                onClick={() => setSidebarOpen(!sidebarOpen)}
-                                className="p-2.5 rounded-xl hover:bg-white/5 transition-all duration-300"
-                                style={{ border: '1px solid var(--color-border-slate)' }}
-                            >
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className={`transition-transform duration-300 ${sidebarOpen ? '' : 'rotate-180'}`}>
-                                    <path d="M4 6h16M4 12h10M4 18h16" stroke="white" strokeWidth="2" strokeLinecap="round" />
-                                </svg>
-                            </button>
-                        )}
+                        <button
+                            onClick={() => setSidebarOpen(!sidebarOpen)}
+                            className="p-2.5 rounded-xl hover:bg-white/5 transition-all duration-300"
+                            style={{ border: '1px solid var(--color-border-slate)' }}
+                        >
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className={`transition-transform duration-300 ${sidebarOpen ? '' : 'rotate-180'}`}>
+                                <path d="M4 6h16M4 12h10M4 18h16" stroke="white" strokeWidth="2" strokeLinecap="round" />
+                            </svg>
+                        </button>
 
                         <div className="flex items-center gap-3">
                             <div className="relative">
@@ -749,12 +479,27 @@ export default function ChatPage() {
                     </div>
 
                     {/* Back to Dashboard Button */}
-
+                    <Link
+                        href="/dashboard"
+                        className="flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-300 hover:scale-105 active:scale-95 no-underline"
+                        style={{
+                            backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                            border: '1px solid var(--color-border-slate)',
+                        }}
+                    >
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                            <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" stroke="var(--color-text-primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                            <path d="M9 22V12h6v10" stroke="var(--color-text-primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                        <span className="text-sm font-medium" style={{ color: 'var(--color-text-primary)', fontFamily: 'var(--font-family-poppins)' }}>
+                            Back to Dashboard
+                        </span>
+                    </Link>
                 </div>
 
                 {/* Messages Area */}
                 <div className="flex-1 overflow-y-auto p-6" style={{ backgroundColor: 'var(--color-bg-dark-primary)' }}>
-                    {!sessionId && messages.length <= 1 ? (
+                    {!sessionId ? (
                         <div className="flex flex-col items-center justify-center h-full text-center gap-6 max-w-[500px] mx-auto">
                             <div className="w-20 h-20 rounded-3xl flex items-center justify-center animate-bounce shadow-2xl" style={{ backgroundColor: 'rgba(34, 197, 94, 0.1)', border: '1px solid var(--color-button-primary)' }}>
                                 <Image
@@ -770,111 +515,135 @@ export default function ChatPage() {
                                     Welcome to {botname}!
                                 </h2>
                                 <p style={{ color: 'var(--color-text-secondary)', fontFamily: 'var(--font-family-jakarta)' }}>
-                                    Start typing below to begin a new conversation.
+                                    Select an existing conversation from the sidebar or click "New Conversation" to start a new chat session.
                                 </p>
                             </div>
+                            <button
+                                onClick={startNewChat}
+                                className="px-8 py-3 rounded-xl font-medium transition-all duration-300 hover:scale-105 active:scale-95 flex items-center gap-2"
+                                style={{
+                                    backgroundColor: 'var(--color-button-primary)',
+                                    color: 'white',
+                                    boxShadow: '0 10px 25px rgba(34, 197, 94, 0.3)'
+                                }}
+                            >
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                                    <path d="M12 5v14M5 12h14" stroke="white" strokeWidth="2.5" strokeLinecap="round" />
+                                </svg>
+                                Start New Conversation
+                            </button>
                         </div>
                     ) : (
-                        <div className="flex flex-col gap-6 w-full max-w-4xl mx-auto">
-                            {messages.map((message, index) => (
+                        <div className="flex flex-col gap-6 max-w-[800px] mx-auto">
+                            {messages.map((msg, index) => (
                                 <div
                                     key={index}
-                                    className={`flex items-start gap-4 ${message.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}
+                                    className={`flex flex-row gap-4 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                                 >
-                                    {/* Avatar */}
-                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${message.role === 'user' ? 'bg-indigo-500/10' : 'bg-emerald-500/10'}`}>
-                                        {message.role === 'user' ? (
-                                            <div className="w-full h-full rounded-xl flex items-center justify-center bg-gradient-to-br from-indigo-500 to-purple-500 text-white font-bold">
-                                                U
-                                            </div>
-                                        ) : (
+                                    {msg.role === 'assistant' && (
+                                        <div className="flex-shrink-0">
                                             <Image
                                                 src="/kathy-avatar.png"
-                                                alt="Kathy AI"
-                                                width={28}
-                                                height={28}
-                                                className="object-contain"
+                                                alt="AI"
+                                                width={40}
+                                                height={40}
+                                                className="object-contain rounded-xl"
                                             />
-                                        )}
-                                    </div>
-
-                                    {/* Message Bubble */}
-                                    <div
-                                        className={`flex flex-col gap-2 max-w-[80%] ${message.role === 'user' ? 'items-end' : 'items-start'}`}
-                                    >
-                                        <div
-                                            className={`p-4 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap ${message.role === 'user'
-                                                ? 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-tr-sm'
-                                                : 'bg-[#1a1c20] text-gray-100 rounded-tl-sm border border-white/5'
-                                                }`}
-                                            style={{ boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }}
-                                        >
-                                            <ReactMarkdown
-                                                remarkPlugins={[remarkMath]}
-                                                rehypePlugins={[rehypeKatex]}
-                                                components={{
-                                                    code({ node, inline, className, children, ...props }) {
-                                                        const match = /language-(\w+)/.exec(className || '')
-                                                        return !inline && match ? (
-                                                            <SyntaxHighlighter
-                                                                style={atomDark}
-                                                                language={match[1]}
-                                                                PreTag="div"
-                                                                {...props}
-                                                            >
-                                                                {String(children).replace(/\n$/, '')}
-                                                            </SyntaxHighlighter>
-                                                        ) : (
-                                                            <code className={className} {...props}>
-                                                                {children}
-                                                            </code>
-                                                        )
-                                                    }
-                                                }}
-                                            >
-                                                {message.content}
-                                            </ReactMarkdown>
                                         </div>
+                                    )}
+                                    <div className={`flex flex-col gap-2 max-w-[70%] ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
+                                        <div
+                                            className="p-4 rounded-2xl"
+                                            style={{
+                                                backgroundColor: msg.role === 'user' ? 'var(--color-button-primary)' : 'var(--color-bg-card)',
+                                                border: msg.role === 'user' ? 'none' : '1px solid var(--color-border-slate)'
+                                            }}
+                                        >
+                                            {msg.role === 'assistant' ? (
+                                                <div className="text-[15px] leading-relaxed m-0 prose prose-invert max-w-none" style={{ color: 'var(--color-text-primary)', fontFamily: 'var(--font-family-jakarta)' }}>
+                                                    <ReactMarkdown
+                                                        components={{
+                                                            p: ({ node, ...props }) => <p className="mb-3 last:mb-0" {...props} />,
+                                                            ul: ({ node, ...props }) => <ul className="list-disc ml-4 mb-3 space-y-1" {...props} />,
+                                                            ol: ({ node, ...props }) => <ol className="list-decimal ml-4 mb-3 space-y-1" {...props} />,
+                                                            li: ({ node, ...props }) => <li className="pl-1" {...props} />,
+                                                            strong: ({ node, ...props }) => <strong className="font-bold text-white" {...props} />,
+                                                            h1: ({ node, ...props }) => <h1 className="text-xl font-bold mb-4 mt-2" {...props} />,
+                                                            h2: ({ node, ...props }) => <h2 className="text-lg font-bold mb-3 mt-2" {...props} />,
+                                                            h3: ({ node, ...props }) => <h3 className="text-md font-bold mb-2 mt-1" {...props} />,
+                                                            code: ({ node, inline, ...props }) => (
+                                                                <code className={`${inline ? 'bg-black/30 px-1 py-0.5 rounded' : 'block bg-black/30 p-3 rounded-lg my-2 font-mono text-sm overflow-x-auto'}`} {...props} />
+                                                            )
+                                                        }}
+                                                    >
+                                                        {msg.content}
+                                                    </ReactMarkdown>
+                                                    {msg.sources && msg.sources.length > 0 && (
+                                                        <div className="mt-4 pt-3 border-t border-white/10">
+                                                            <button
+                                                                onClick={() => setExpandedSources(prev => ({ ...prev, [index]: !prev[index] }))}
+                                                                className="flex items-center gap-2 text-[10px] font-bold tracking-wider uppercase text-white/40 hover:text-white transition-colors"
+                                                            >
+                                                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" className={`transition-transform duration-300 ${expandedSources[index] ? 'rotate-180' : ''}`}>
+                                                                    <path d="M19 9l-7 7-7-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                                                </svg>
+                                                                Sources & Citations ({msg.sources.length})
+                                                            </button>
 
-                                        {/* Metadata */}
-                                        <div className="flex items-center gap-2 px-2">
-                                            <span className="text-[10px] text-gray-500 font-medium opacity-60">
-                                                {message.timestamp}
-                                            </span>
-                                            {message.role === 'assistant' && (
-                                                <div className="flex gap-2 items-center">
-                                                    <button
-                                                        onClick={() => message.id && handleFeedback(message.id, 1)}
-                                                        disabled={!message.id}
-                                                        className={`p-1 rounded hover:bg-white/10 transition-all ${message.rating === 1 ? 'text-green-500' : 'text-gray-500 hover:text-green-400'} ${!message.id ? 'opacity-30 cursor-not-allowed' : ''}`}
-                                                        title={message.id ? "Good response" : "Saving..."}
-                                                    >
-                                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path></svg>
-                                                    </button>
-                                                    <button
-                                                        onClick={() => message.id && handleFeedback(message.id, -1)}
-                                                        disabled={!message.id}
-                                                        className={`p-1 rounded hover:bg-white/10 transition-all ${message.rating === -1 ? 'text-red-500' : 'text-gray-500 hover:text-red-400'} ${!message.id ? 'opacity-30 cursor-not-allowed' : ''}`}
-                                                        title={message.id ? "Bad response" : "Saving..."}
-                                                    >
-                                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"></path></svg>
-                                                    </button>
-                                                    <div className="w-[1px] h-3 bg-white/10 mx-1"></div>
-                                                    <button className="text-[10px] text-gray-500 hover:text-white transition-colors">
-                                                        Copy
-                                                    </button>
-                                                    <button className="text-[10px] text-gray-500 hover:text-white transition-colors">
-                                                        Regenerate
-                                                    </button>
+                                                            {expandedSources[index] && (
+                                                                <div className="mt-3 flex flex-col gap-2.5 animate-in fade-in zoom-in-95 duration-300">
+                                                                    {msg.sources.map((source, sIdx) => (
+                                                                        <div
+                                                                            key={sIdx}
+                                                                            onClick={() => {
+                                                                                const url = `${API_URL}/chat/view-doc/${source.document_id}#page=${source.page_label || 1}`;
+                                                                                setViewerConfig({ url, filename: source.source_filename, page: source.page_label });
+                                                                            }}
+                                                                            className="p-3.5 rounded-xl bg-white/5 border border-white/10 group cursor-pointer hover:bg-white/10 hover:border-emerald-500/30 transition-all duration-300"
+                                                                        >
+                                                                            <div className="flex items-center gap-2.5 mb-2.5">
+                                                                                <div className="w-6 h-6 rounded-lg bg-emerald-500/20 flex items-center justify-center border border-emerald-500/20 group-hover:bg-emerald-500/40 transition-colors">
+                                                                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" className="text-emerald-400">
+                                                                                        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                                                                        <path d="M14 2v6h6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                                                                    </svg>
+                                                                                </div>
+                                                                                <span className="text-[12px] font-medium text-emerald-100/90 truncate max-w-[150px]">{source.source_filename}</span>
+                                                                                <div className="px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-[9px] font-bold text-emerald-400">
+                                                                                    PG {source.page_label || 1}
+                                                                                </div>
+                                                                                <div className="ml-auto px-2 py-0.5 rounded-md bg-black/40 border border-white/5 text-[9px] font-mono text-white/30 group-hover:text-emerald-400/60 transition-colors">
+                                                                                    REL: {(source.relevance_score || 0).toFixed(3)}
+                                                                                </div>
+                                                                            </div>
+                                                                            <p className="text-[11px] leading-relaxed text-white/50 group-hover:text-white/70 transition-colors italic border-l-2 border-emerald-500/30 pl-3 m-0">
+                                                                                "{source.content}"
+                                                                            </p>
+                                                                            <div className="mt-2 flex items-center gap-1 text-[9px] font-bold uppercase tracking-tighter text-emerald-400/0 group-hover:text-emerald-400/80 transition-all duration-300">
+                                                                                <span>View Document</span>
+                                                                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none">
+                                                                                    <path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                                                                                </svg>
+                                                                            </div>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )}
                                                 </div>
+                                            ) : (
+                                                <p className="text-[15px] leading-relaxed m-0 whitespace-pre-wrap" style={{ color: 'var(--color-text-primary)', fontFamily: 'var(--font-family-jakarta)' }}>
+                                                    {msg.content}
+                                                </p>
                                             )}
                                         </div>
-                                        <span className="text-[11px] px-1" style={{ color: 'var(--color-text-secondary)' }}>{message.timestamp}</span>
+                                        <span className="text-[11px] px-1" style={{ color: 'var(--color-text-secondary)' }}>{msg.timestamp}</span>
 
                                         {/* Suggested Questions */}
-                                        {message.role === 'assistant' && message.suggestions && message.suggestions.length > 0 && index === messages.length - 1 && (
+                                        {msg.role === 'assistant' && msg.suggestions && msg.suggestions.length > 0 && index === messages.length - 1 && (
                                             <div className="flex flex-wrap gap-2 mt-3 animate-in fade-in slide-in-from-bottom-2 duration-500">
-                                                {message.suggestions.map((suggestion, sIdx) => (
+                                                {msg.suggestions.map((suggestion, sIdx) => (
                                                     <button
                                                         key={sIdx}
                                                         onClick={() => sendMessageToBackend(suggestion)}
@@ -891,6 +660,15 @@ export default function ChatPage() {
                                             </div>
                                         )}
                                     </div>
+                                    {msg.role === 'user' && (
+                                        <div className="flex-shrink-0">
+                                            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'var(--color-button-primary)' }}>
+                                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                                                    <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z" stroke="white" strokeWidth="2" />
+                                                </svg>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             ))}
                             {isLoading && (
@@ -916,85 +694,66 @@ export default function ChatPage() {
                 <div className="p-5" style={{ backgroundColor: 'var(--color-bg-card)', borderTop: '1px solid var(--color-border-slate)' }}>
                     <form onSubmit={handleSendMessage} className="max-w-[800px] mx-auto">
                         <div
-                            className={`flex flex-col gap-2 p-2 rounded-2xl transition-all`}
+                            className={`flex flex-row gap-3 items-end p-2 rounded-2xl transition-all ${!sessionId ? 'opacity-50 grayscale pointer-events-none' : ''}`}
                             style={{
                                 backgroundColor: 'var(--color-bg-dark-primary)',
                                 border: '1px solid var(--color-border-slate)'
                             }}
                         >
-                            {/* Toolbar */}
-                            <div className="flex items-center px-2 gap-3 pb-2 border-b border-white/5">
-                                <button
-                                    type="button"
-                                    onClick={() => setUseWebSearch(!useWebSearch)}
-                                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${useWebSearch
-                                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50'
-                                        : 'bg-white/5 text-gray-400 border border-transparent hover:bg-white/10'
-                                        }`}
-                                >
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                                        <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                                    </svg>
-                                    Web Search {useWebSearch ? 'ON' : 'OFF'}
-                                </button>
-                            </div>
-
-                            <div className="flex flex-row gap-3 items-end">
-                                <input
-                                    type="file"
-                                    ref={fileInputRef}
-                                    onChange={handleFileChange}
-                                    className="hidden"
-                                    accept=".pdf,.docx,.txt,.xlsx"
-                                />
-                                <button
-                                    type="button"
-                                    onClick={() => fileInputRef.current?.click()}
-                                    className={`p-3 rounded-xl hover:bg-white/5 transition-all ${isUploading ? 'animate-pulse' : ''}`}
-                                    disabled={isUploading}
-                                    title={!sessionId ? "Start a conversation to upload files" : "Add document to knowledge base"}
-                                >
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                                        <path d="M12 5v14M5 12h14" stroke={isUploading ? 'var(--color-button-primary)' : 'var(--color-text-secondary)'} strokeWidth="2" strokeLinecap="round" />
-                                    </svg>
-                                </button>
-                                <div className="flex-1">
-                                    <textarea
-                                        value={message}
-                                        onChange={(e) => setMessage(e.target.value)}
-                                        onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(e); } }}
-                                        placeholder="Type your message..."
-                                        rows={1}
-                                        disabled={isLoading}
-                                        className="w-full p-3 rounded-xl resize-none focus:outline-none transition-all disabled:opacity-50"
-                                        style={{
-                                            backgroundColor: 'transparent',
-                                            border: 'none',
-                                            color: 'var(--color-text-primary)',
-                                            fontFamily: 'var(--font-family-jakarta)',
-                                            minHeight: '48px',
-                                            maxHeight: '120px',
-                                        }}
-                                    />
-                                </div>
-                                <button
-                                    type="submit"
-                                    disabled={!message.trim() || isLoading}
-                                    className="p-4 rounded-xl transition-all duration-300 disabled:opacity-30 disabled:cursor-not-allowed hover:scale-105 active:scale-95"
+                            <input
+                                type="file"
+                                ref={fileInputRef}
+                                onChange={handleFileChange}
+                                className="hidden"
+                                accept=".pdf,.docx,.txt,.xlsx"
+                            />
+                            <button
+                                type="button"
+                                onClick={() => fileInputRef.current?.click()}
+                                className={`p-3 rounded-xl hover:bg-white/5 transition-all ${isUploading ? 'animate-pulse' : ''}`}
+                                disabled={!sessionId || isUploading}
+                                title="Add document to knowledge base"
+                            >
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                                    <path d="M12 5v14M5 12h14" stroke={isUploading ? 'var(--color-button-primary)' : 'var(--color-text-secondary)'} strokeWidth="2" strokeLinecap="round" />
+                                </svg>
+                            </button>
+                            <div className="flex-1">
+                                <textarea
+                                    value={message}
+                                    onChange={(e) => setMessage(e.target.value)}
+                                    onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(e); } }}
+                                    placeholder={sessionId ? "Type your message..." : "Please select or start a new conversation"}
+                                    rows={1}
+                                    disabled={isLoading || !sessionId}
+                                    className="w-full p-3 rounded-xl resize-none focus:outline-none transition-all disabled:opacity-50"
                                     style={{
-                                        backgroundColor: 'var(--color-button-primary)',
-                                        boxShadow: message.trim() ? '0 4px 15px rgba(34, 197, 94, 0.3)' : 'none'
+                                        backgroundColor: 'transparent',
+                                        border: 'none',
+                                        color: 'var(--color-text-primary)',
+                                        fontFamily: 'var(--font-family-jakarta)',
+                                        minHeight: '48px',
+                                        maxHeight: '120px',
                                     }}
-                                >
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                                        <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                    </svg>
-                                </button>
+                                />
                             </div>
-                            <p className="text-center text-xs mt-3" style={{ color: 'var(--color-text-secondary)' }}>
-                                Press Enter to send, Shift+Enter for new line
-                            </p>
+                            <button
+                                type="submit"
+                                disabled={!message.trim() || isLoading || !sessionId}
+                                className="p-4 rounded-xl transition-all duration-300 disabled:opacity-30 disabled:cursor-not-allowed hover:scale-105 active:scale-95"
+                                style={{
+                                    backgroundColor: 'var(--color-button-primary)',
+                                    boxShadow: message.trim() && sessionId ? '0 4px 15px rgba(34, 197, 94, 0.3)' : 'none'
+                                }}
+                            >
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                                    <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                            </button>
                         </div>
+                        <p className="text-center text-xs mt-3" style={{ color: 'var(--color-text-secondary)' }}>
+                            {sessionId ? "Press Enter to send, Shift+Enter for new line" : "Select a conversation to start chatting"}
+                        </p>
                     </form>
                 </div>
             </div>
@@ -1059,127 +818,6 @@ export default function ChatPage() {
                                 className="px-6 py-2 rounded-xl bg-white/5 border border-white/10 text-xs font-bold text-white/60 hover:text-white hover:bg-white/10 transition-all"
                             >
                                 Close Viewer
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Auth Modal */}
-            {authModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-300">
-                    <div className="w-full max-w-[400px] bg-[#1a1c20] rounded-3xl border border-white/10 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
-                        <div className="relative p-6">
-                            <button
-                                onClick={() => setAuthModalOpen(false)}
-                                className="absolute top-4 right-4 text-white/40 hover:text-white transition-colors"
-                            >
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                                    <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                </svg>
-                            </button>
-
-                            <h3 className="text-xl font-bold text-white text-center mb-6" style={{ fontFamily: 'var(--font-family-poppins)' }}>
-                                {authMode === 'login' ? 'Welcome Back' : 'Create Account'}
-                            </h3>
-
-                            {authError && (
-                                <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm text-center">
-                                    {authError}
-                                </div>
-                            )}
-
-                            <form onSubmit={handleAuth} className="flex flex-col gap-4">
-                                <input
-                                    type="email"
-                                    name="email"
-                                    placeholder="Email address"
-                                    required
-                                    className="w-full p-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-white/30 focus:outline-none focus:border-emerald-500/50 transition-all"
-                                />
-                                <input
-                                    type="password"
-                                    name="password"
-                                    placeholder="Password"
-                                    required
-                                    className="w-full p-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-white/30 focus:outline-none focus:border-emerald-500/50 transition-all"
-                                />
-                                <button
-                                    type="submit"
-                                    disabled={authLoading}
-                                    className="w-full py-3 rounded-xl font-medium text-white shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/40 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
-                                    style={{ backgroundColor: 'var(--color-button-primary)' }}
-                                >
-                                    {authLoading ? 'Processing...' : (authMode === 'login' ? 'Sign In' : 'Sign Up')}
-                                </button>
-                            </form>
-
-                            <div className="mt-6 text-center">
-                                <p className="text-sm text-white/40">
-                                    {authMode === 'login' ? "Don't have an account? " : "Already have an account? "}
-                                    <button
-                                        onClick={() => { setAuthMode(authMode === 'login' ? 'register' : 'login'); setAuthError(''); }}
-                                        className="text-emerald-400 hover:text-emerald-300 font-medium transition-colors"
-                                    >
-                                        {authMode === 'login' ? 'Sign Up' : 'Sign In'}
-                                    </button>
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Delete Session Confirmation Modal */}
-            {deleteConfirmOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)' }}>
-                    <div className="relative w-full max-w-sm p-6 rounded-2xl" style={{ backgroundColor: 'var(--color-bg-card)', border: '1px solid var(--color-border-slate)' }}>
-                        <h3 className="text-lg font-semibold mb-2" style={{ color: 'var(--color-text-primary)' }}>Delete Conversation?</h3>
-                        <p className="text-sm mb-6" style={{ color: 'var(--color-text-secondary)' }}>
-                            This will permanently delete this conversation. This action cannot be undone.
-                        </p>
-                        <div className="flex gap-3">
-                            <button
-                                onClick={() => { setDeleteConfirmOpen(false); setSessionToDelete(null); }}
-                                className="flex-1 py-2.5 rounded-xl font-medium transition-all hover:bg-white/10"
-                                style={{ border: '1px solid var(--color-border-slate)', color: 'var(--color-text-primary)' }}
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={confirmDeleteSession}
-                                className="flex-1 py-2.5 rounded-xl font-medium transition-all hover:opacity-90"
-                                style={{ backgroundColor: 'var(--color-destructive)', color: 'white' }}
-                            >
-                                Delete
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Logout Confirmation Modal */}
-            {logoutConfirmOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)' }}>
-                    <div className="relative w-full max-w-sm p-6 rounded-2xl" style={{ backgroundColor: 'var(--color-bg-card)', border: '1px solid var(--color-border-slate)' }}>
-                        <h3 className="text-lg font-semibold mb-2" style={{ color: 'var(--color-text-primary)' }}>Sign Out?</h3>
-                        <p className="text-sm mb-6" style={{ color: 'var(--color-text-secondary)' }}>
-                            Are you sure you want to sign out? Your chat history will still be saved.
-                        </p>
-                        <div className="flex gap-3">
-                            <button
-                                onClick={() => setLogoutConfirmOpen(false)}
-                                className="flex-1 py-2.5 rounded-xl font-medium transition-all hover:bg-white/10"
-                                style={{ border: '1px solid var(--color-border-slate)', color: 'var(--color-text-primary)' }}
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={confirmLogout}
-                                className="flex-1 py-2.5 rounded-xl font-medium transition-all hover:opacity-90"
-                                style={{ backgroundColor: 'var(--color-destructive)', color: 'white' }}
-                            >
-                                Sign Out
                             </button>
                         </div>
                     </div>
