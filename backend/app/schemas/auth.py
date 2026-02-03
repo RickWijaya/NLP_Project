@@ -43,7 +43,6 @@ class TokenResponse(BaseModel):
     token_type: str = "bearer"
     expires_in: int
     tenant_id: str  # Required for frontend tenant isolation
-    is_super_admin: bool = False  # Flag for superadmin redirect
 
 
 class TokenPayload(BaseModel):

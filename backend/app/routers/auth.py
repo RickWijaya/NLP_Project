@@ -121,8 +121,7 @@ async def login(
         access_token=access_token,
         token_type="bearer",
         expires_in=settings.jwt_expiry_minutes * 60,
-        tenant_id=admin.tenant_id,
-        is_super_admin=admin.is_super_admin if hasattr(admin, 'is_super_admin') else False
+        tenant_id=admin.tenant_id
     )
 
 
