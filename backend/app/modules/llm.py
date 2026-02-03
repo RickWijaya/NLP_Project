@@ -1,6 +1,6 @@
 """
 LLM integration module using Groq API.
-Generates responses using llama-3.3-70b-versatile.
+Generates responses using specified models.
 """
 
 from typing import List, Dict, Optional, AsyncGenerator
@@ -28,7 +28,8 @@ class LLMGenerator:
         api_key: str = None,
         model: str = None,
         temperature: float = None,
-        max_tokens: int = None
+        max_tokens: int = None,
+        top_p: float = None
     ):
         """
         Initialize the LLM generator.
@@ -37,6 +38,7 @@ class LLMGenerator:
         self.model = model or settings.llm_model
         self.temperature = temperature if temperature is not None else settings.llm_temperature
         self.max_tokens = max_tokens or settings.llm_max_tokens
+        self.top_p = top_p if top_p is not None else settings.top_p
         
         # Initialize Async Groq client
         self._client = AsyncGroq(api_key=self.api_key)
@@ -48,7 +50,8 @@ class LLMGenerator:
         messages: List[Dict[str, str]],
         model: str = None,
         temperature: float = None,
-        max_tokens: int = None
+        max_tokens: int = None,
+        top_p: float = None
     ) -> Dict:
         """
         Generate a response from the LLM (Async).
@@ -65,6 +68,7 @@ class LLMGenerator:
         active_model = model or self.model
         temp = temperature if temperature is not None else self.temperature
         tokens = max_tokens or self.max_tokens
+        p = top_p if top_p is not None else self.top_p
         
         start_time = time.time()
         
@@ -74,7 +78,7 @@ class LLMGenerator:
                 messages=messages,
                 temperature=temp,
                 max_tokens=tokens,
-                top_p=0.95,
+                top_p=p,
                 stream=False
             )
             
@@ -107,13 +111,15 @@ class LLMGenerator:
         self,
         messages: List[Dict[str, str]],
         temperature: float = None,
-        max_tokens: int = None
+        max_tokens: int = None,
+        top_p: float = None
     ) -> AsyncGenerator[str, None]:
         """
         Generate a streaming response from the LLM.
         """
         temp = temperature if temperature is not None else self.temperature
         tokens = max_tokens or self.max_tokens
+        p = top_p if top_p is not None else self.top_p
         
         try:
             stream = await self._client.chat.completions.create(
@@ -121,7 +127,7 @@ class LLMGenerator:
                 messages=messages,
                 temperature=temp,
                 max_tokens=tokens,
-                top_p=0.95,
+                top_p=p,
                 stream=True
             )
             
