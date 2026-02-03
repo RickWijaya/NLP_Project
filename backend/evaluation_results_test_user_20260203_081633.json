@@ -1,0 +1,215 @@
+{
+  "summary": {
+    "total_tests": 7,
+    "avg_response_time_ms": 3306.326457432338,
+    "avg_chunks_retrieved": 5.0,
+    "avg_relevance_score": 0.5358399253062344,
+    "avg_tokens_used": 0.0,
+    "context_adherence_stats": {
+      "strict": 2,
+      "partial": 5,
+      "external": 0,
+      "appropriate_decline": 0
+    },
+    "model_used": "llama-3.3-70b-versatile",
+    "timestamp": "2026-02-03T08:16:33.614796",
+    "avg_faithfulness": 0.19057142857142859,
+    "avg_answer_relevancy": 0.5047142857142857,
+    "avg_context_precision": 1.0,
+    "avg_context_recall": 0.43014285714285716,
+    "avg_hallucination_score": 0.5665714285714286,
+    "avg_answer_correctness": 0.4524285714285714,
+    "avg_semantic_similarity": 0.044857142857142866
+  },
+  "results": [
+    {
+      "question": "What services do you offer?",
+      "expected_answer": null,
+      "generated_answer": "Based on the context, Sahabat Cafe offers the following services:\n\n1. Food and beverages: They have a variety of menu items, including snacks, main dishes, desserts, and drinks, such as French fries, onion rings, mozzarella sticks, chicken wings, ice coffee, bubble tea, and milkshakes.\n2. Catering service: They cater to events and parties, and offer a student discount with a 5% discount for students who show their student ID.\n3. Group bookings: They can accommodate groups of up to 10 people.\n4. Free Wi-Fi: They offer free Wi-Fi to their customers.\n5. Comfortable seating: They have a cozy seat area, both indoor and outdoor, with air conditioning.\n\nThey also mention that they use fresh ingredients and pay attention to detail in making their dishes. Additionally, they have vegetarian and vegan options available.",
+      "chunks_retrieved": 5,
+      "relevance_scores": [
+        0.6167148209019222,
+        0.6042127754535409,
+        0.5874194591299473,
+        0.5689776159052495,
+        0.5665872312995974
+      ],
+      "avg_relevance": 0.5887823805380515,
+      "response_time_ms": 15809.464454650879,
+      "tokens_used": 0,
+      "model_used": "llama-3.3-70b-versatile",
+      "context_adherence": "strict",
+      "comprehensive_metrics": {
+        "faithfulness_score": 0.167,
+        "answer_relevancy": 0.6,
+        "context_precision": 1.0,
+        "context_recall": 0.333,
+        "hallucination_score": 0.583,
+        "answer_correctness": 0.667,
+        "semantic_similarity": 0.097
+      }
+    },
+    {
+      "question": "What are your operating hours?",
+      "expected_answer": null,
+      "generated_answer": "According to Source 2, Sahabat Cafe's operating hours are:\n- Monday to Friday: 8:00 AM - 9:00 PM\n- Saturday and Sunday: 10:00 AM - 8:00 PM",
+      "chunks_retrieved": 5,
+      "relevance_scores": [
+        0.6218950986019234,
+        0.5722937744186967,
+        0.559625668506061,
+        0.5362623028962058,
+        0.5135690554995633
+      ],
+      "avg_relevance": 0.56072917998449,
+      "response_time_ms": 921.3376045227051,
+      "tokens_used": 0,
+      "model_used": "llama-3.3-70b-versatile",
+      "context_adherence": "partial",
+      "comprehensive_metrics": {
+        "faithfulness_score": 0.0,
+        "answer_relevancy": 0.6,
+        "context_precision": 1.0,
+        "context_recall": 0.5,
+        "hallucination_score": 0.7,
+        "answer_correctness": 0.25,
+        "semantic_similarity": 0.022
+      }
+    },
+    {
+      "question": "How can I contact you?",
+      "expected_answer": null,
+      "generated_answer": "You can contact Sahabat Cafe through the following methods:\n\n1. Phone: 021 555 1234\n2. Email: sahabatcafe@president.ac.id\n3. Social media: @sahabatcafeofficial\n\nThese contact details are available in Source 3 - Reference.",
+      "chunks_retrieved": 5,
+      "relevance_scores": [
+        0.5802946859070308,
+        0.5790837978987251,
+        0.5362774702697576,
+        0.5195347368382244,
+        0.512940117235362
+      ],
+      "avg_relevance": 0.5456261616298199,
+      "response_time_ms": 1983.3698272705078,
+      "tokens_used": 0,
+      "model_used": "llama-3.3-70b-versatile",
+      "context_adherence": "partial",
+      "comprehensive_metrics": {
+        "faithfulness_score": 0.167,
+        "answer_relevancy": 0.6,
+        "context_precision": 1.0,
+        "context_recall": 0.75,
+        "hallucination_score": 0.583,
+        "answer_correctness": 0.75,
+        "semantic_similarity": 0.034
+      }
+    },
+    {
+      "question": "What is your pricing?",
+      "expected_answer": null,
+      "generated_answer": "Based on the provided context, here are some prices for menu items at Sahabat Cafe:\n\n1. Snacks:\n   - French Fry: IDR 15,000\n   - Onion Ring: IDR 18,000\n   - Mozzarella Stick: IDR 20,000\n   - Chicken Wing: IDR 25,000\n\n2. Beverages:\n   - Ice Coffee: IDR 20,000\n   - Bubble Tea: IDR 18,000\n   - Milkshake: IDR 22,000\n\n3. Main Dishes:\n   - Cheese Burger: IDR 40,000\n   - Veggie Burger: IDR 35,000\n   - Chicken Caesar Salad: IDR 30,000\n   - Spaghetti Bolognese: IDR 45,000\n\n4. Desserts:\n   - Chocolate Cake: IDR 20,000\n   - Fruit Parfait: IDR 18,000\n   - Ice Cream: IDR 15,000 (choose from vanilla, chocolate, or strawberry)\n\nPlease note that prices may be subject to change, and it's always best to check with the cafe directly for the most up-to-date pricing.",
+      "chunks_retrieved": 5,
+      "relevance_scores": [
+        0.5790449962309799,
+        0.5491554876826779,
+        0.5186368899315952,
+        0.49262286281926715,
+        0.4820985103454023
+      ],
+      "avg_relevance": 0.5243117494019846,
+      "response_time_ms": 1306.1738014221191,
+      "tokens_used": 0,
+      "model_used": "llama-3.3-70b-versatile",
+      "context_adherence": "strict",
+      "comprehensive_metrics": {
+        "faithfulness_score": 0.0,
+        "answer_relevancy": 0.2,
+        "context_precision": 1.0,
+        "context_recall": 0.5,
+        "hallucination_score": 0.7,
+        "answer_correctness": 0.5,
+        "semantic_similarity": 0.078
+      }
+    },
+    {
+      "question": "Where are you located?",
+      "expected_answer": null,
+      "generated_answer": "According to the context, Sahabat Cafe is located at the heart of President University campus, on the ground floor of the main building, adjacent to the student lounge.",
+      "chunks_retrieved": 5,
+      "relevance_scores": [
+        0.606481415292504,
+        0.5726697028070286,
+        0.5538262066311219,
+        0.5474182366656477,
+        0.5382027526145647
+      ],
+      "avg_relevance": 0.5637196628021733,
+      "response_time_ms": 1074.4080543518066,
+      "tokens_used": 0,
+      "model_used": "llama-3.3-70b-versatile",
+      "context_adherence": "partial",
+      "comprehensive_metrics": {
+        "faithfulness_score": 1.0,
+        "answer_relevancy": 0.2,
+        "context_precision": 1.0,
+        "context_recall": 0.75,
+        "hallucination_score": 0.0,
+        "answer_correctness": 0.0,
+        "semantic_similarity": 0.035
+      }
+    },
+    {
+      "question": "Who is the president of the United States?",
+      "expected_answer": null,
+      "generated_answer": "The provided context does not contain any information about the president of the United States. The context appears to be about a cafe called Sahabat Cafe, located at President University, and provides information about its menu, location, and services. Therefore, I cannot provide an answer to your question based on the given context.",
+      "chunks_retrieved": 5,
+      "relevance_scores": [
+        0.47912973761543287,
+        0.41428083804301763,
+        0.4089374597778991,
+        0.40678231685951427,
+        0.38919082212420963
+      ],
+      "avg_relevance": 0.4196642348840148,
+      "response_time_ms": 975.0487804412842,
+      "tokens_used": 0,
+      "model_used": "llama-3.3-70b-versatile",
+      "context_adherence": "partial",
+      "comprehensive_metrics": {
+        "faithfulness_score": 0.0,
+        "answer_relevancy": 0.733,
+        "context_precision": 1.0,
+        "context_recall": 0.119,
+        "hallucination_score": 0.7,
+        "answer_correctness": 0.5,
+        "semantic_similarity": 0.03
+      }
+    },
+    {
+      "question": "What is the weather today?",
+      "expected_answer": null,
+      "generated_answer": "The context provided does not contain any information about the current weather. It appears to be a collection of references about a cafe, its menu, and services. Therefore, I couldn't find any relevant information to answer your question about the weather today.",
+      "chunks_retrieved": 5,
+      "relevance_scores": [
+        0.5666102634729437,
+        0.5602730112030916,
+        0.5526982826699798,
+        0.5362121271070819,
+        0.5244368550624346
+      ],
+      "avg_relevance": 0.5480461079031064,
+      "response_time_ms": 1074.4826793670654,
+      "tokens_used": 0,
+      "model_used": "llama-3.3-70b-versatile",
+      "context_adherence": "partial",
+      "comprehensive_metrics": {
+        "faithfulness_score": 0.0,
+        "answer_relevancy": 0.6,
+        "context_precision": 1.0,
+        "context_recall": 0.059,
+        "hallucination_score": 0.7,
+        "answer_correctness": 0.5,
+        "semantic_similarity": 0.018
+      }
+    }
+  ]
+}

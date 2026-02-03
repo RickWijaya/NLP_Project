@@ -150,6 +150,10 @@ class ChatSession(Base):
     # Optional user identifier (for tracking without auth)
     user_identifier = Column(String(255), nullable=True)  # Could be IP, session cookie, etc.
     
+    # Intelligence fields
+    context_summary = Column(Text, nullable=True)  # Extracted entities and context
+    current_goal = Column(String(255), nullable=True)  # Current user goal
+    
     title = Column(String(255), default="New Chat")
     
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -170,17 +174,42 @@ class ChatMessage(Base):
     session_id = Column(UUID(as_uuid=True), ForeignKey("chat_sessions.id"), nullable=False)
     
     role = Column(String(20), nullable=False)  # "user" or "assistant"
-    content = Column(Text, nullable=False)
+    content = Column(Text, nullable=True) # content can be null if it is a pure action
+    
+    # Intelligence fields
+    intent = Column(String(50), nullable=True)  # Detected intent
     
     # Metadata for RAG responses
     chunks_used = Column(Integer, default=0)  # Number of context chunks used
     model_used = Column(String(100), nullable=True)  # Which model generated this response
+    token_usage = Column(Integer, nullable=True)  # Tokens used
+    processing_time_ms = Column(Float, nullable=True)  # Generation time
     
+    # Feedback
+    rating = Column(Integer, nullable=True)  # 1 (Like), -1 (Dislike)
+    feedback_text = Column(String(500), nullable=True)
+
     created_at = Column(DateTime, default=datetime.utcnow)
     
     # Relationship
     session = relationship("ChatSession", back_populates="messages")
     
+
+class QARule(Base):
+    """Rule-based Q&A overrides."""
+    __tablename__ = "qa_rules"
+    
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(String(100), nullable=False, index=True)
+    
+    trigger_text = Column(String(500), nullable=False)  # The question/keyword to match
+    answer_text = Column(Text, nullable=False)          # The hardcoded answer
+    match_type = Column(String(20), default="contains") # exact, contains
+    is_active = Column(Boolean, default=True)
+    
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
     def __repr__(self):
-        return f"<ChatMessage(role={self.role}, session_id={self.session_id})>"
+        return f"<QARule(trigger={self.trigger_text}, tenant={self.tenant_id})>"
 

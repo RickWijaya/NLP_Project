@@ -39,7 +39,8 @@ async def get_db() -> AsyncSession:
 async def init_db():
     """Initialize database tables."""
     # Import models to register them with Base.metadata
-    from app.models.document import Admin, Document, ProcessingLog, TenantSettings, ChatSession, ChatMessage  # noqa
+    from app.models.document import Admin, Document, ProcessingLog, TenantSettings, ChatSession, ChatMessage, QARule
+    from app.models.user import User  # register User model
     
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)

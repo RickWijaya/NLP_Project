@@ -33,7 +33,7 @@ SUGGESTION_TEMPLATES = {
 }
 
 
-def generate_suggestions(
+async def generate_suggestions(
     question: str,
     answer: str,
     context_snippets: Optional[List[str]] = None,
@@ -44,7 +44,7 @@ def generate_suggestions(
     """
     try:
         # Prepare context for LLM
-        context_str = "\n".join([f"- {s[:200]}" for s in context_snippets]) if context_snippets else "No specific document context available."
+        context_str = "\\n".join([f"- {s[:200]}" for s in context_snippets]) if context_snippets else "No specific document context available."
         
         prompt = f"""You are an AI assistant helping a customer. 
 Based on the conversation below, generate {max_suggestions} short, relevant follow-up questions that the user might want to ask next.
@@ -68,7 +68,7 @@ Output Format:
 - Question 3?
 """
         
-        response = llm_generator.generate(
+        response = await llm_generator.generate(
             messages=[
                 {"role": "system", "content": "You are a helpful customer support assistant."},
                 {"role": "user", "content": prompt}

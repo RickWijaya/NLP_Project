@@ -50,6 +50,15 @@ export default function DashboardPage() {
     const [deleteConfirm, setDeleteConfirm] = useState(null); // {id, name}
     const [isDeleting, setIsDeleting] = useState(false);
 
+    // Feedback analytics state
+    const [feedbackStats, setFeedbackStats] = useState({
+        total_rated: 0,
+        positive: 0,
+        negative: 0,
+        satisfaction_rate: 0,
+        recent_feedback: []
+    });
+
     // Load user info and fetch data on mount
     useEffect(() => {
         const storedToken = localStorage.getItem('token');
@@ -68,6 +77,7 @@ export default function DashboardPage() {
         // Fetch data
         fetchStats(storedToken);
         fetchDocuments(storedToken);
+        fetchFeedback(storedToken);
     }, [router]);
 
     const fetchStats = async (authToken) => {
@@ -88,6 +98,21 @@ export default function DashboardPage() {
             }
         } catch (err) {
             console.error('Failed to fetch stats:', err);
+        }
+    };
+
+    const fetchFeedback = async (authToken) => {
+        try {
+            const response = await fetch(`${API_URL}/analytics/feedback`, {
+                headers: { 'Authorization': `Bearer ${authToken}` }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                setFeedbackStats(data);
+            }
+        } catch (err) {
+            console.error('Failed to fetch feedback:', err);
         }
     };
 
@@ -432,6 +457,74 @@ export default function DashboardPage() {
                         </div>
                     </div>
 
+                    {/* Feedback Analytics Section */}
+                    <div className="flex flex-col p-6 gap-5 rounded-xl" style={{ backgroundColor: 'var(--color-bg-card)', border: '1px solid var(--color-border-slate)' }}>
+                        <div className="flex flex-row justify-between items-center">
+                            <h3 className="font-semibold text-[20px] leading-6 tracking-[-0.006em] text-[#E5E7EB] m-0" style={{ fontFamily: 'var(--font-family-jakarta)' }}>
+                                User Feedback
+                            </h3>
+                            <div className="flex items-center gap-4">
+                                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full" style={{ backgroundColor: 'rgba(34, 197, 94, 0.1)', border: '1px solid rgba(34, 197, 94, 0.3)' }}>
+                                    <span className="text-green-400 text-sm">👍 {feedbackStats.positive}</span>
+                                </div>
+                                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full" style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)' }}>
+                                    <span className="text-red-400 text-sm">👎 {feedbackStats.negative}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Satisfaction Rate */}
+                        <div className="flex flex-col gap-2">
+                            <div className="flex justify-between items-center">
+                                <span className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>Satisfaction Rate</span>
+                                <span className="font-bold text-lg" style={{ color: feedbackStats.satisfaction_rate >= 50 ? '#22C55E' : '#EF4444' }}>
+                                    {feedbackStats.satisfaction_rate}%
+                                </span>
+                            </div>
+                            <div className="w-full h-2 rounded-full" style={{ backgroundColor: 'rgba(255,255,255,0.1)' }}>
+                                <div
+                                    className="h-full rounded-full transition-all duration-500"
+                                    style={{
+                                        width: `${feedbackStats.satisfaction_rate}%`,
+                                        backgroundColor: feedbackStats.satisfaction_rate >= 50 ? '#22C55E' : '#EF4444'
+                                    }}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Recent Feedback List */}
+                        {feedbackStats.recent_feedback && feedbackStats.recent_feedback.length > 0 && (
+                            <div className="flex flex-col gap-3 mt-2">
+                                <h4 className="text-sm font-medium" style={{ color: 'var(--color-text-secondary)' }}>Recent Feedback</h4>
+                                <div className="flex flex-col gap-2 max-h-[300px] overflow-y-auto">
+                                    {feedbackStats.recent_feedback.map((item, idx) => (
+                                        <div
+                                            key={idx}
+                                            className="flex flex-row items-start gap-3 p-3 rounded-lg transition-all"
+                                            style={{ backgroundColor: 'var(--color-bg-dark-primary)', border: '1px solid var(--color-border-slate)' }}
+                                        >
+                                            <span className="text-lg">{item.rating === 1 ? '👍' : '👎'}</span>
+                                            <div className="flex flex-col gap-1 flex-1">
+                                                <p className="text-sm m-0 line-clamp-2" style={{ color: 'var(--color-text-primary)' }}>
+                                                    {item.content}
+                                                </p>
+                                                <span className="text-[10px]" style={{ color: 'var(--color-text-secondary)' }}>
+                                                    {new Date(item.created_at).toLocaleString()}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {feedbackStats.total_rated === 0 && (
+                            <p className="text-sm text-center py-4" style={{ color: 'var(--color-text-secondary)' }}>
+                                No feedback received yet. Users can rate responses using 👍 and 👎 buttons in the chat.
+                            </p>
+                        )}
+                    </div>
+
                     {/* Upload Section */}
                     <div className="flex flex-col p-6 gap-5 rounded-xl" style={{ backgroundColor: 'var(--color-bg-card)', border: '1px solid var(--color-border-slate)' }}>
                         <h3 className="font-semibold text-[20px] leading-6 tracking-[-0.006em] text-[#E5E7EB] m-0" style={{ fontFamily: 'var(--font-family-jakarta)' }}>
@@ -648,6 +741,98 @@ export default function DashboardPage() {
                                     </>
                                 )}
                             </button>
+                        </div>
+                    </div>
+
+                    {/* Embed Widget Section */}
+                    <div className="flex flex-col p-6 gap-4 rounded-xl mt-6" style={{ backgroundColor: 'var(--color-bg-card)', border: '2px solid var(--color-button-primary)' }}>
+                        <div className="flex flex-row items-center gap-3">
+                            <div className="flex justify-center items-center w-12 h-12 rounded-lg" style={{ backgroundColor: 'rgba(168, 85, 247, 0.1)' }}>
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#A855F7" strokeWidth="2">
+                                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                                </svg>
+                            </div>
+                            <div className="flex flex-col gap-1">
+                                <p className="font-semibold text-[18px] text-[#E5E7EB] m-0" style={{ fontFamily: 'var(--font-family-jakarta)' }}>
+                                    🧩 Embed on Your Website
+                                </p>
+                                <p className="text-sm m-0" style={{ color: 'var(--color-text-secondary)' }}>
+                                    Add this code to your website's HTML to display the chat widget.
+                                </p>
+                            </div>
+                        </div>
+                        <div className="flex flex-row gap-3 items-center">
+                            <div className="flex-1 px-4 py-3 rounded-lg overflow-x-auto" style={{ backgroundColor: 'var(--color-bg-dark-primary)', border: '1px solid var(--color-border-slate)' }}>
+                                <code className="text-sm whitespace-nowrap" style={{ color: '#A855F7' }}>
+                                    {`<script src="${API_URL}/widget/${tenantId || 'default_tenant'}.js"></script>`}
+                                </code>
+                            </div>
+                            <button
+                                onClick={() => {
+                                    navigator.clipboard.writeText(`<script src="${API_URL}/widget/${tenantId || 'default_tenant'}.js"></script>`);
+                                    alert('Embed code copied!');
+                                }}
+                                className="flex items-center gap-2 px-6 py-3 rounded-lg border-none cursor-pointer transition-all hover:opacity-80"
+                                style={{ backgroundColor: '#A855F7', color: 'white' }}
+                            >
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                                </svg>
+                                Copy Code
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Inline Embed Widget Section */}
+                    <div className="flex flex-col p-6 gap-4 rounded-xl mt-6" style={{ backgroundColor: 'var(--color-bg-card)', border: '2px solid var(--color-border-slate)' }}>
+                        <div className="flex flex-row items-center gap-3">
+                            <div className="flex justify-center items-center w-12 h-12 rounded-lg" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)' }}>
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" strokeWidth="2">
+                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                    <line x1="3" y1="9" x2="21" y2="9"></line>
+                                </svg>
+                            </div>
+                            <div className="flex flex-col gap-1">
+                                <p className="font-semibold text-[18px] text-[#E5E7EB] m-0" style={{ fontFamily: 'var(--font-family-jakarta)' }}>
+                                    📄 Embed Inline (Page Section)
+                                </p>
+                                <p className="text-sm m-0" style={{ color: 'var(--color-text-secondary)' }}>
+                                    Embed the chat directly into a section of your webpage instead of a popup.
+                                </p>
+                            </div>
+                        </div>
+                        <div className="flex flex-col gap-2">
+                            <p className="text-xs text-gray-400">1. Create a container in your HTML:</p>
+                            <div className="px-4 py-3 rounded-lg overflow-x-auto" style={{ backgroundColor: 'var(--color-bg-dark-primary)', border: '1px solid var(--color-border-slate)' }}>
+                                <code className="text-sm whitespace-nowrap" style={{ color: '#3B82F6' }}>
+                                    {`<div id="ai-chat-inline-container" style="height: 600px; width: 100%;"></div>`}
+                                </code>
+                            </div>
+
+                            <p className="text-xs text-gray-400 mt-2">2. Add the script:</p>
+                            <div className="flex flex-row gap-3 items-center">
+                                <div className="flex-1 px-4 py-3 rounded-lg overflow-x-auto" style={{ backgroundColor: 'var(--color-bg-dark-primary)', border: '1px solid var(--color-border-slate)' }}>
+                                    <code className="text-sm whitespace-nowrap" style={{ color: '#3B82F6' }}>
+                                        {`<script src="${API_URL}/widget/${tenantId || 'default_tenant'}_inline.js"></script>`}
+                                    </code>
+                                </div>
+                                <button
+                                    onClick={() => {
+                                        const code = `<div id="ai-chat-inline-container" style="height: 600px; width: 100%;"></div>\n<script src="${API_URL}/widget/${tenantId || 'default_tenant'}_inline.js"></script>`;
+                                        navigator.clipboard.writeText(code);
+                                        alert('Inline embed code copied!');
+                                    }}
+                                    className="flex items-center gap-2 px-6 py-3 rounded-lg border-none cursor-pointer transition-all hover:opacity-80"
+                                    style={{ backgroundColor: '#3B82F6', color: 'white' }}
+                                >
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                                    </svg>
+                                    Copy Code
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>

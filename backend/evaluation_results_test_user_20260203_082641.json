@@ -1,0 +1,215 @@
+{
+  "summary": {
+    "total_tests": 7,
+    "avg_response_time_ms": 60960.86505481175,
+    "avg_chunks_retrieved": 5.0,
+    "avg_relevance_score": 0.5320396306725624,
+    "avg_tokens_used": 0.0,
+    "context_adherence_stats": {
+      "strict": 2,
+      "partial": 4,
+      "external": 1,
+      "appropriate_decline": 0
+    },
+    "model_used": "tinyllama",
+    "timestamp": "2026-02-03T08:26:41.964227",
+    "avg_faithfulness": 0.05714285714285715,
+    "avg_answer_relevancy": 0.5618571428571429,
+    "avg_context_precision": 1.0,
+    "avg_context_recall": 0.41814285714285715,
+    "avg_hallucination_score": 0.6685714285714285,
+    "avg_answer_correctness": 0.5,
+    "avg_semantic_similarity": 0.05000000000000001
+  },
+  "results": [
+    {
+      "question": "What services do you offer?",
+      "expected_answer": null,
+      "generated_answer": "Response: Thank you for providing the context, which indicates that Sahabat Cafe offers various food options such as fresh juices, juicy beef patties, grilled vegetables, chicken burgers, pasta, spaghetti bolognese, desserts like chocolate cakes and yogurt, among others. As for the services offered, Sahabat Cafe provides a comfortable atmosphere with Wi-Fi for customers to connect and relax. They also offer free Wi-Fi for online ordering, a customer group booking option, and a free Wi-Fi option for those who prefer to use their own devices. Overall, Sahabat Cafe caters to both students and non-students and offers a range of affordable yet delicious options for breakfast, lunch, and dinner.",
+      "chunks_retrieved": 5,
+      "relevance_scores": [
+        0.5798786533487429,
+        0.5797818166440604,
+        0.5665872312995974,
+        0.5482576891243746,
+        0.5412669509481525
+      ],
+      "avg_relevance": 0.5631544682729855,
+      "response_time_ms": 82409.77048873901,
+      "tokens_used": 0,
+      "model_used": "local:tinyllama",
+      "context_adherence": "strict",
+      "comprehensive_metrics": {
+        "faithfulness_score": 0.0,
+        "answer_relevancy": 0.6,
+        "context_precision": 1.0,
+        "context_recall": 0.333,
+        "hallucination_score": 0.7,
+        "answer_correctness": 1.0,
+        "semantic_similarity": 0.075
+      }
+    },
+    {
+      "question": "What are your operating hours?",
+      "expected_answer": null,
+      "generated_answer": "Certainly! Here's an answer based on the provided context:\n\nAs mentioned in Source 2, Sahabat Cafe is located at President University and offers a wide range of food, drinks, and snacks for customers to enjoy. Their operating hours are Monday through Sunday from 8 AM until 9 PM, with the exception of holidays. They also have a designated outdoor seating area, air conditioning, and Wi-Fi for their customers to stay connected. The menu includes options such as french fries, vegetarian vegan options, fried chicken wings, spicy BBQ sweet chili chicken wings, cheese burgers, mozarrella sticks, crispy onion rings, and more. Additionally, they offer variety of vegetarian, vegan, and gluten-free options for those with dietary restrictions. As mentioned in Source 3, customers can find a great meal, good company, and comfort in Sahabat Cafe's comfortable seating area, air conditioning, and Wi-Fi. The restaurant serves a variety of snacks, including fried chicken wings, spicy BBQ sweet chili chicken wings, cheese burger, mozzarella sticks, crispy onion rings, and more. Sahabat Cafe also has vegetarian, vegan, and gluten-free options available for those with dietary restrictions. Enjoy your meal or snack at Sahabat Cafe!",
+      "chunks_retrieved": 5,
+      "relevance_scores": [
+        0.6218950986019234,
+        0.5722937744186967,
+        0.559625668506061,
+        0.5362623028962058,
+        0.5135690554995633
+      ],
+      "avg_relevance": 0.56072917998449,
+      "response_time_ms": 98233.28042030334,
+      "tokens_used": 0,
+      "model_used": "local:tinyllama",
+      "context_adherence": "strict",
+      "comprehensive_metrics": {
+        "faithfulness_score": 0.4,
+        "answer_relevancy": 0.6,
+        "context_precision": 1.0,
+        "context_recall": 0.5,
+        "hallucination_score": 0.42,
+        "answer_correctness": 0.25,
+        "semantic_similarity": 0.132
+      }
+    },
+    {
+      "question": "How can I contact you?",
+      "expected_answer": null,
+      "generated_answer": "Sure! Here's an example response:\n\nQuestion: How can I contact you?\nResponse: Please find my contact information below:\n- Phone Number: (021) 555-1234\n- Email Address: [Your Company Name] Sahabat Cafe, [Your Company Address]\n- Social Media Accounts: [Link to relevant social media profiles]\n- Website: [Your Company Website URL]\n\nNote that depending on the specific situation, different channels may work better for reaching out to a company. In this case, we recommend using social media or email as primary options. Additionally, it's essential to clearly communicate any preferences or expectations regarding communication methods, so that the company can tailor their response accordingly.",
+      "chunks_retrieved": 5,
+      "relevance_scores": [
+        0.5802946859070308,
+        0.5727198061723172,
+        0.5294693470749128,
+        0.512940117235362,
+        0.4982243019769853
+      ],
+      "avg_relevance": 0.5387296516733217,
+      "response_time_ms": 63034.223318099976,
+      "tokens_used": 0,
+      "model_used": "local:tinyllama",
+      "context_adherence": "partial",
+      "comprehensive_metrics": {
+        "faithfulness_score": 0.0,
+        "answer_relevancy": 1.0,
+        "context_precision": 1.0,
+        "context_recall": 0.75,
+        "hallucination_score": 0.7,
+        "answer_correctness": 0.75,
+        "semantic_similarity": 0.05
+      }
+    },
+    {
+      "question": "What is your pricing?",
+      "expected_answer": null,
+      "generated_answer": "To address the user's question about pricing, I would provide the following response:\n\nAs per our reference sources, the pricing for this particular menu item varies depending on its availability, seasonality, and the number of customers it serves. However, we aim to offer competitive prices for our food items, ensuring that our customers get value for their money. Our prices are clearly stated on our website, and we also have a dedicated team that monitors our prices regularly to ensure they remain competitive. Please visit our website or contact us directly to find out more about our pricing policies. We apologize for any confusion caused by this error.",
+      "chunks_retrieved": 5,
+      "relevance_scores": [
+        0.5790449962309799,
+        0.5491554876826779,
+        0.5186368899315952,
+        0.49262286281926715,
+        0.4820985103454023
+      ],
+      "avg_relevance": 0.5243117494019846,
+      "response_time_ms": 57821.85506820679,
+      "tokens_used": 0,
+      "model_used": "local:tinyllama",
+      "context_adherence": "partial",
+      "comprehensive_metrics": {
+        "faithfulness_score": 0.0,
+        "answer_relevancy": 0.2,
+        "context_precision": 1.0,
+        "context_recall": 0.5,
+        "hallucination_score": 0.7,
+        "answer_correctness": 0.25,
+        "semantic_similarity": 0.019
+      }
+    },
+    {
+      "question": "Where are you located?",
+      "expected_answer": null,
+      "generated_answer": "Sure! Based on the given context, here is a helpful answer:\n\nSahabat Cafe is located at President University, which is located near the campus in Ubud, Bali. The address for Sahabat Cafe is Sahabat Cafe President University, Frangipani Avenue, Ubud, Bali 80361, Indonesia. This information can also be found on the Sahabat Cafe website, which is mentioned as Sahabat Cafe, Ubud Campus, President University, Frangipani Avenue, Ubud, Bali 80361. Please let me know if there are any other questions or concerns.",
+      "chunks_retrieved": 5,
+      "relevance_scores": [
+        0.6008609662245259,
+        0.5803027049770144,
+        0.5660441155680045,
+        0.5494677363580426,
+        0.5466265902227635
+      ],
+      "avg_relevance": 0.5686604226700702,
+      "response_time_ms": 51075.52647590637,
+      "tokens_used": 0,
+      "model_used": "local:tinyllama",
+      "context_adherence": "partial",
+      "comprehensive_metrics": {
+        "faithfulness_score": 0.0,
+        "answer_relevancy": 0.2,
+        "context_precision": 1.0,
+        "context_recall": 0.75,
+        "hallucination_score": 0.7,
+        "answer_correctness": 0.25,
+        "semantic_similarity": 0.024
+      }
+    },
+    {
+      "question": "Who is the president of the United States?",
+      "expected_answer": null,
+      "generated_answer": "Sure! Based on the context above, I would provide the following answer:\n\nYes, the President of the United States is Donald Trump.\n\nThis answer is accurate based on the provided context. The reference provided includes references to the president's name and his current position within the government.",
+      "chunks_retrieved": 5,
+      "relevance_scores": [
+        0.4745200663396084,
+        0.4167288141403308,
+        0.41300687361511834,
+        0.40978259779062864,
+        0.38919082212420963
+      ],
+      "avg_relevance": 0.42064583480197915,
+      "response_time_ms": 27556.925058364868,
+      "tokens_used": 0,
+      "model_used": "local:tinyllama",
+      "context_adherence": "partial",
+      "comprehensive_metrics": {
+        "faithfulness_score": 0.0,
+        "answer_relevancy": 0.733,
+        "context_precision": 1.0,
+        "context_recall": 0.028,
+        "hallucination_score": 0.7,
+        "answer_correctness": 0.5,
+        "semantic_similarity": 0.019
+      }
+    },
+    {
+      "question": "What is the weather today?",
+      "expected_answer": null,
+      "generated_answer": "Certainly! Based on the given context, the weather for today is likely to be sunny with a few cloudy patches. The source \"Reference\" mentioned that the temperature is currently around 25°C (77°F) and that it will be mostly dry throughout the day. The specific location where this weather report is being provided is not mentioned, but the weather information is typically updated regularly and should remain accurate until the time of publication. If you need more specific details or want to check the forecast for another location, you can visit a reputable weather forecasting website like AccuWeather, Weather.com, or Weather Underground.",
+      "chunks_retrieved": 5,
+      "relevance_scores": [
+        0.5666102634729437,
+        0.5602730112030916,
+        0.5526982826699798,
+        0.5362121271070819,
+        0.5244368550624346
+      ],
+      "avg_relevance": 0.5480461079031064,
+      "response_time_ms": 46594.47455406189,
+      "tokens_used": 0,
+      "model_used": "local:tinyllama",
+      "context_adherence": "external",
+      "comprehensive_metrics": {
+        "faithfulness_score": 0.0,
+        "answer_relevancy": 0.6,
+        "context_precision": 1.0,
+        "context_recall": 0.066,
+        "hallucination_score": 0.76,
+        "answer_correctness": 0.5,
+        "semantic_similarity": 0.031
+      }
+    }
+  ]
+}
