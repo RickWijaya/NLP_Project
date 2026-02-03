@@ -5,8 +5,9 @@ Generates responses using llama-3.3-70b-versatile.
 
 from typing import List, Dict, Optional, AsyncGenerator
 import time
+import asyncio
 
-from groq import Groq
+from groq import AsyncGroq
 
 from app.config import get_settings
 from app.utils.logger import logger
@@ -31,24 +32,18 @@ class LLMGenerator:
     ):
         """
         Initialize the LLM generator.
-        
-        Args:
-            api_key: Groq API key
-            model: Model name to use
-            temperature: Sampling temperature
-            max_tokens: Maximum response tokens
         """
         self.api_key = api_key or settings.groq_api_key
         self.model = model or settings.llm_model
         self.temperature = temperature if temperature is not None else settings.llm_temperature
         self.max_tokens = max_tokens or settings.llm_max_tokens
         
-        # Initialize Groq client
-        self._client = Groq(api_key=self.api_key)
+        # Initialize Async Groq client
+        self._client = AsyncGroq(api_key=self.api_key)
         
         logger.info(f"LLM Generator initialized with model: {self.model}")
     
-    def generate(
+    async def generate(
         self,
         messages: List[Dict[str, str]],
         model: str = None,
@@ -56,7 +51,7 @@ class LLMGenerator:
         max_tokens: int = None
     ) -> Dict:
         """
-        Generate a response from the LLM.
+        Generate a response from the LLM (Async).
         
         Args:
             messages: List of message dicts with 'role' and 'content'
@@ -74,7 +69,7 @@ class LLMGenerator:
         start_time = time.time()
         
         try:
-            response = self._client.chat.completions.create(
+            response = await self._client.chat.completions.create(
                 model=active_model,
                 messages=messages,
                 temperature=temp,
@@ -116,20 +111,12 @@ class LLMGenerator:
     ) -> AsyncGenerator[str, None]:
         """
         Generate a streaming response from the LLM.
-        
-        Args:
-            messages: List of message dicts with 'role' and 'content'
-            temperature: Optional override for temperature
-            max_tokens: Optional override for max tokens
-            
-        Yields:
-            String chunks of the response
         """
         temp = temperature if temperature is not None else self.temperature
         tokens = max_tokens or self.max_tokens
         
         try:
-            stream = self._client.chat.completions.create(
+            stream = await self._client.chat.completions.create(
                 model=self.model,
                 messages=messages,
                 temperature=temp,
@@ -138,7 +125,7 @@ class LLMGenerator:
                 stream=True
             )
             
-            for chunk in stream:
+            async for chunk in stream:
                 if chunk.choices[0].delta.content:
                     yield chunk.choices[0].delta.content
                     

@@ -1,13 +1,55 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import { API_URL } from '@/app/lib/api';
 
 export default function DashboardLayout({ children }) {
     const pathname = usePathname();
-    const email = 'admin@gmail.com'; // Replace with actual user email logic
-    const menuItems = [
+    const router = useRouter();
+    const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
+
+    // Check if user is super admin and validate token
+    useEffect(() => {
+        const checkAuth = async () => {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                router.push('/login');
+                return;
+            }
+
+            try {
+                // First, validate token using admin profile endpoint
+                const adminResponse = await fetch(`${API_URL}/admin/profile`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (adminResponse.status === 401) {
+                    localStorage.removeItem('token');
+                    router.push('/login');
+                    return;
+                }
+
+                if (adminResponse.ok) {
+                    const profile = await adminResponse.json();
+                    // Check if user is superadmin based on profile
+                    setIsSuperAdmin(profile.is_super_admin === true);
+                }
+            } catch (error) {
+                console.error("Auth check failed", error);
+                setIsSuperAdmin(false);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        checkAuth();
+    }, [router]);
+
+    // Regular admin menu items
+    const adminMenuItems = [
         {
             name: 'Dashboard',
             path: '/dashboard',
@@ -36,6 +78,15 @@ export default function DashboardLayout({ children }) {
             )
         },
         {
+            name: 'Q&A Rules',
+            path: '/dashboard/rules',
+            icon: (
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H8c0-2.21 1.79-4 4-4s4 1.79 4 4c0 .88-.36 1.68-.93 2.25z" fill="currentColor" />
+                </svg>
+            )
+        },
+        {
             name: 'Profile',
             path: '/dashboard/profile',
             icon: (
@@ -52,6 +103,32 @@ export default function DashboardLayout({ children }) {
             )
         }
     ];
+
+    // Super Admin menu items (different from regular admin)
+    const superAdminMenuItems = [
+        {
+            name: 'Super Admin',
+            path: '/dashboard/superadmin',
+            icon: (
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 4l4 2v3h-8V7l4-2zm-4 7h8v2H8v-2zm0 4h8v2H8v-2z" fill="currentColor" />
+                </svg>
+            ),
+            special: true
+        },
+        {
+            name: 'Profile',
+            path: '/dashboard/profile',
+            icon: (
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" fill="currentColor" />
+                </svg>
+            )
+        }
+    ];
+
+    // Choose which menu items to display based on user type
+    const menuItems = isSuperAdmin ? superAdminMenuItems : adminMenuItems;
 
     return (
         <div className="flex h-screen overflow-hidden" style={{ backgroundColor: 'var(--color-bg-dark-primary)' }}>
@@ -84,19 +161,23 @@ export default function DashboardLayout({ children }) {
                         <ul className="list-none p-0 m-0 flex flex-col gap-[15px] w-full">
                             {menuItems.map((item) => {
                                 const isActive = pathname === item.path;
+                                const isSuperAdminItem = item.special;
                                 return (
                                     <li key={item.path}>
                                         <Link
                                             href={item.path}
                                             className="flex flex-row items-center p-[10px_15px] gap-3 w-full h-11 rounded-[20px] no-underline transition-all duration-300"
                                             style={{
-                                                backgroundColor: isActive ? 'var(--color-button-primary)' : 'transparent',
-                                                color: '#E5E7EB',
-                                                fontFamily: 'var(--font-family-poppins)'
+                                                backgroundColor: isActive
+                                                    ? (isSuperAdminItem ? '#A855F7' : 'var(--color-button-primary)')
+                                                    : (isSuperAdminItem ? 'rgba(168, 85, 247, 0.1)' : 'transparent'),
+                                                color: isSuperAdminItem ? '#E9D5FF' : '#E5E7EB',
+                                                fontFamily: 'var(--font-family-poppins)',
+                                                border: isSuperAdminItem ? '1px solid rgba(168, 85, 247, 0.3)' : 'none'
                                             }}
                                         >
                                             <span className="w-6 h-6 flex items-center justify-center flex-shrink-0">
-                                                {item.icon}
+                                                {isSuperAdminItem ? '👑' : item.icon}
                                             </span>
                                             <span className="font-normal text-[16px] leading-6 whitespace-nowrap">
                                                 {item.name}

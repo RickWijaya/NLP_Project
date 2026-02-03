@@ -28,7 +28,7 @@ class QueryExpander:
         """
         self.expansion_count = expansion_count or getattr(settings, "expansion_count", 3)
     
-    def generate_variations(self, query: str) -> List[str]:
+    async def generate_variations(self, query: str) -> List[str]:
         """
         Generate variations of a query using LLM.
         
@@ -62,7 +62,7 @@ Output format:
 """
 
         try:
-            response = llm_generator.generate(
+            response = await llm_generator.generate(
                 messages=[
                     {"role": "system", "content": "You are a search query expansion specialist."},
                     {"role": "user", "content": prompt}
