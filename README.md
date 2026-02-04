@@ -46,7 +46,7 @@ Together, the frontend and backend provide a scalable platform for deploying LLM
 - **Extensibility:** Modular design allows developers to swap embedding models, vector databases or LLM providers with minimal changes.
 
 ## Project Structure
-
+```
 nlp_project/  
 ├── app/ # Next.js App Router frontend  
 │ ├── page.tsx # Login page\[7\]  
@@ -70,7 +70,7 @@ nlp_project/
 │ ├── requirements.txt # Python dependencies\[20\]  
 │ └── .env # Environment configuration (ignored in VCS)\[21\]  
 └── public/ # Static assets for the frontend
-
+```
 ## Setup Instructions
 
 The project consists of a frontend and a backend. You can run them separately during development or deploy them together in production.
