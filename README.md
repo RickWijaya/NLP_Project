@@ -90,69 +90,70 @@ The project consists of a frontend and a backend. You can run them separately du
 ### Installation
 
 Clone this repository and navigate into it:
-
+```
 git clone <https://github.com/RickWijaya/NLP_Project.git>  
 cd NLP_Project
-
+```
 #### Frontend
 
 - Change to the project root (if you aren't already) and install dependencies:
-
-npm install\[26\]
-
+```
+npm install
+```
 - Create an **.env.local** file in the root directory and set the base URL of your backend API (adjust the URL if your backend runs elsewhere):
-
+```
 \# .env.local  
-NEXT_PUBLIC_API_URL=<http://localhost:8000\[27\>]
-
+NEXT_PUBLIC_API_URL=<http://localhost:8000
+```
 - Start the development server on port **3000**:
-
-npm run dev\[28\]
-
+```
+npm run dev
+```
 Visit <http://localhost:3000> and follow the admin flow: register a new admin at /register, then log in at / to access the dashboard[\[29\]](https://github.com/RickWijaya/NLP_Project/blob/main/README.md#:~:text=Visit%20%2Fregister%20to%20create%20an,auth%2Fregister%20request%20to%20the%20backend). Customers can access the chat interface at /chat/\[company_id\] without authentication[\[30\]](https://github.com/RickWijaya/NLP_Project/blob/main/README.md#:~:text=Customers%20can%20access%20the%20chat,company%20identifier%20used%20during%20registration).
 
 - **Production build:** To build an optimized production bundle, run:
-
-npm run build\[31\]  
-npm start\[32\]
-
+```
+npm run build  
+npm start
+```
 Deploy the generated .next folder on a platform such as Vercel, Netlify or your own Node.js server. Ensure that NEXT_PUBLIC_API_URL points to your deployed backend[\[33\]](https://github.com/RickWijaya/NLP_Project/blob/main/README.md#:~:text=run%20npm%20start,points%20to%20the%20deployed%20backend).
 
 #### Backend
 
 - Navigate to the backend directory:
-
-cd backend\[34\]
-
+```
+cd backend
+```
 - Create and activate a virtual environment:
-
-python -m venv venv\[35\]  
+```
+python -m venv venv\
 source venv/bin/activate # Windows: .\\venv\\Scripts\\activate
-
+```
 - Install dependencies:
-
-pip install -r requirements.txt\[36\]
-
+```
+pip install -r requirements.txt
+```
 - Download NLP models for preprocessing:
-
-python -m spacy download en_core_web_sm\[37\]  
-python -c "import nltk; nltk.download('punkt'); nltk.download('stopwords'); nltk.download('wordnet')"\[38\]
-
+```
+python -m spacy download en_core_web_sm
+python -c "import nltk; nltk.download('punkt'); nltk.download('stopwords'); nltk.download('wordnet')"
+```
 - Create a **.env** file in the backend directory with your configuration:
 
 \# .env  
-DATABASE_URL=postgresql+asyncpg://postgres:YOUR_PASSWORD@localhost:5432/rag_db\[39\]  
-JWT_SECRET=your-super-secret-key-change-this\[40\]  
-GROQ_API_KEY=gsk_your_groq_api_key_here\[41\]
-
+```
+DATABASE_URL=postgresql+asyncpg://postgres:YOUR_PASSWORD@localhost:5432/rag_db
+JWT_SECRET=your-super-secret-key-change-this 
+GROQ_API_KEY=gsk_your_groq_api_key_here
+```
 - Create the Postgres database (use psql or your favourite client):
 
 CREATE DATABASE rag_db;【767827045854559†L497-L503】
 
 - Launch the FastAPI server with Uvicorn:
-
-uvicorn app.main:app --reload --port 8000\[42\]
-
+```
+uvicorn app.main:app --reload --port 8000
+```
 The API will be available at <http://localhost:8000>. In development mode, --reload enables hot reloading on code changes.
 
 - Optional: Access API documentation and basic HTML interfaces:
